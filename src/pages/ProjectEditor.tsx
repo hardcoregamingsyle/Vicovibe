@@ -29,7 +29,7 @@ export default function ProjectEditor() {
   const listRepos = useAction(api.github.listUserRepos);
   const importRepo = useAction(api.github.importRepository);
   const createRepo = useAction(api.github.createRepository);
-  const connectGithub = useMutation(api.githubMutations.connectGithubAccount);
+  const ensureGithubConnected = useMutation(api.githubMutations.ensureGithubConnected);
   const disconnectGithub = useMutation(api.githubMutations.disconnectGithubAccount);
 
   const [message, setMessage] = useState("");
@@ -53,6 +53,13 @@ export default function ProjectEditor() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
 
+  // Auto-check if user is GitHub connected on mount
+  useEffect(() => {
+    if (user) {
+      ensureGithubConnected();
+    }
+  }, [user, ensureGithubConnected]);
+
   const isGithubConnected = user?.githubConnected;
 
   const handleOpenGithubDialog = async () => {
@@ -67,8 +74,10 @@ export default function ProjectEditor() {
 
   const handleConnectGithub = () => {
     setShowConnectDialog(false);
-    // Redirect to GitHub OAuth flow
-    window.location.href = `${import.meta.env.VITE_CONVEX_URL}/api/auth/github`;
+    // Redirect to Convex Auth GitHub OAuth flow
+    // The redirect parameter ensures user returns to this page after auth
+    const redirectUrl = encodeURIComponent(window.location.href);
+    window.location.href = `${import.meta.env.VITE_CONVEX_URL}/api/auth/signin?provider=github&redirectTo=${redirectUrl}`;
   };
 
   const handleDeclineConnect = () => {
