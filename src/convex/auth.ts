@@ -16,7 +16,8 @@ if (process.env.AUTH_GITHUB_ID && process.env.AUTH_GITHUB_SECRET) {
           name: profile.name,
           email: profile.email,
           image: profile.avatar_url,
-          accessToken: tokens.access_token,
+          // Store access token in a way that Convex Auth can handle
+          githubAccessToken: tokens.access_token,
         };
       },
     })

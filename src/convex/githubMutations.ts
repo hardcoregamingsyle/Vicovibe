@@ -40,6 +40,36 @@ export const ensureGithubConnected = mutation({
   },
 });
 
+// Store GitHub access token in authAccounts after OAuth
+export const storeGithubToken = mutation({
+  args: {
+    accessToken: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Not authenticated");
+    
+    // Find the GitHub auth account
+    const authAccount = await ctx.db
+      .query("authAccounts")
+      .withIndex("userIdAndProvider", (q) => 
+        q.eq("userId", user._id).eq("provider", "github")
+      )
+      .first();
+    
+    if (!authAccount) {
+      throw new Error("GitHub account not found");
+    }
+    
+    // Store the access token in the authAccounts table
+    await ctx.db.patch(authAccount._id, {
+      accessToken: args.accessToken,
+    });
+    
+    return { success: true };
+  },
+});
+
 // Connect GitHub account (store access token)
 export const connectGithubAccount = mutation({
   args: {
