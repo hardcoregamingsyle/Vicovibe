@@ -60,7 +60,7 @@ function Login({ redirectAfterAuth }: LoginProps = {}) {
       await signIn(provider);
     } catch (error) {
       console.error(`${provider} sign-in error:`, error);
-      setError(`Failed to sign in with ${provider}`);
+      setError(`${provider.charAt(0).toUpperCase() + provider.slice(1)} sign-in is not configured yet. Please use email/password login.`);
       setIsLoading(false);
     }
   };
