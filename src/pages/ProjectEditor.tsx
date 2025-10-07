@@ -72,6 +72,15 @@ export default function ProjectEditor() {
     setGithubAction(null);
   };
 
+  const handleGithubError = (error: any) => {
+    const errorMessage = error?.message || String(error);
+    if (errorMessage.includes("GitHub not connected") || errorMessage.includes("Please connect your GitHub account")) {
+      setShowConnectDialog(true);
+    } else {
+      toast.error(errorMessage);
+    }
+  };
+
   const handleConnectGithub = () => {
     setShowConnectDialog(false);
     // Redirect to Convex Auth GitHub OAuth flow
@@ -94,7 +103,8 @@ export default function ProjectEditor() {
         const repos = await listRepos();
         setUserRepos(repos);
       } catch (error) {
-        toast.error("Failed to load repositories");
+        setShowGithubDialog(false);
+        handleGithubError(error);
       } finally {
         setIsLoading(false);
       }
@@ -114,7 +124,8 @@ export default function ProjectEditor() {
       setShowGithubDialog(false);
       setSandboxOpen(true);
     } catch (error) {
-      toast.error("Failed to import repository");
+      setShowGithubDialog(false);
+      handleGithubError(error);
     } finally {
       setIsLoading(false);
     }
@@ -135,7 +146,8 @@ export default function ProjectEditor() {
       setShowGithubDialog(false);
       setSandboxOpen(true);
     } catch (error) {
-      toast.error("Failed to create repository");
+      setShowGithubDialog(false);
+      handleGithubError(error);
     } finally {
       setIsLoading(false);
     }
