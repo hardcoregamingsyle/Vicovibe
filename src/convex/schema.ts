@@ -46,9 +46,28 @@ const schema = defineSchema(
       slug: v.string(),
       content: v.string(),
       checksUsed: v.number(),
+      githubRepoUrl: v.optional(v.string()),
+      githubSyncEnabled: v.optional(v.boolean()),
+      lastGithubSync: v.optional(v.number()),
     })
       .index("by_user", ["userId"])
       .index("by_slug", ["slug"]),
+
+    chatMessages: defineTable({
+      projectId: v.id("projects"),
+      userId: v.id("users"),
+      role: v.union(v.literal("user"), v.literal("assistant")),
+      message: v.string(),
+    })
+      .index("by_project", ["projectId"]),
+
+    projectFiles: defineTable({
+      projectId: v.id("projects"),
+      filePath: v.string(),
+      content: v.string(),
+      lastModified: v.number(),
+    })
+      .index("by_project", ["projectId"]),
   },
   {
     schemaValidation: false,
