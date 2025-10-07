@@ -41,12 +41,6 @@ export const send = mutation({
   },
 });
 
-
-// --- Add this to src/convex/chat.ts (append to the file) ---
-import { v } from "convex/values";
-import { mutation } from "./_generated/server";
-import { getCurrentUser } from "./users";
-
 /**
  * Insert an assistant (AI) message into the chatMessages table.
  * Usage from frontend: useMutation(api.chat.sendAI)
