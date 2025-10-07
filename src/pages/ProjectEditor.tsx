@@ -104,6 +104,8 @@ export default function ProjectEditor() {
     if (action === "import") {
       setIsLoading(true);
       try {
+        // Ensure GitHub connection is synced before listing repos
+        await ensureGithubConnected();
         const repos = await listRepos();
         setUserRepos(repos);
       } catch (error) {
