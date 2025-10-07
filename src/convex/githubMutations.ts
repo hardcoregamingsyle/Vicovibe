@@ -10,7 +10,7 @@ export const ensureGithubConnected = mutation({
     if (!user) throw new Error("Not authenticated");
     
     // Check if user has a GitHub auth account
-    const authAccounts = await ctx.db
+    const authAccount = await ctx.db
       .query("authAccounts")
       .withIndex("userIdAndProvider", (q) => 
         q.eq("userId", user._id).eq("provider", "github")
@@ -18,12 +18,14 @@ export const ensureGithubConnected = mutation({
       .first();
     
     // If they have a GitHub auth account but aren't marked as connected, update it
-    if (authAccounts && !user.githubConnected) {
+    if (authAccount && !user.githubConnected) {
       await ctx.db.patch(user._id, {
         githubConnected: true,
-        githubUsername: authAccounts.providerAccountId,
+        githubUsername: authAccount.providerAccountId,
       });
     }
+    
+    return { connected: !!authAccount };
   },
 });
 

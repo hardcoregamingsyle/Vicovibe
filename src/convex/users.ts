@@ -1,5 +1,6 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { query, QueryCtx, internalQuery } from "./_generated/server";
+import { v } from "convex/values";
 
 /**
  * Get the current signed in user. Returns null if the user is not signed in.
@@ -26,6 +27,23 @@ export const currentUserInternal = internalQuery({
   args: {},
   handler: async (ctx) => {
     return await getCurrentUser(ctx);
+  },
+});
+
+/**
+ * Get GitHub auth account for a user (internal use only)
+ */
+export const getGithubAuthAccount = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const authAccount = await ctx.db
+      .query("authAccounts")
+      .withIndex("userIdAndProvider", (q) => 
+        q.eq("userId", args.userId).eq("provider", "github")
+      )
+      .first();
+    
+    return authAccount;
   },
 });
 

@@ -4,6 +4,26 @@ import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 
+// Helper function to get GitHub access token
+async function getGithubAccessToken(ctx: any): Promise<string | null> {
+  const user = await ctx.runQuery(internal.users.currentUserInternal);
+  if (!user) return null;
+  
+  // First check if token is stored in user record
+  if (user.githubAccessToken) {
+    return user.githubAccessToken;
+  }
+  
+  // Otherwise, try to get it from authAccounts
+  const authAccount = await ctx.runQuery(internal.users.getGithubAuthAccount, { userId: user._id });
+  
+  if (authAccount?.accessToken) {
+    return authAccount.accessToken;
+  }
+  
+  return null;
+}
+
 // List user's GitHub repositories
 export const listUserRepos = action({
   args: {},
@@ -15,14 +35,14 @@ export const listUserRepos = action({
     description: string | null;
     private: boolean;
   }>> => {
-    const user = await ctx.runQuery(internal.users.currentUserInternal);
-    if (!user || !user.githubAccessToken) {
+    const accessToken = await getGithubAccessToken(ctx);
+    if (!accessToken) {
       throw new Error("GitHub not connected");
     }
     
     const response = await fetch("https://api.github.com/user/repos?per_page=100&sort=updated", {
       headers: {
-        Authorization: `Bearer ${user.githubAccessToken}`,
+        Authorization: `Bearer ${accessToken}`,
         Accept: "application/vnd.github.v3+json",
         "User-Agent": "Vibe-Coder",
       },
