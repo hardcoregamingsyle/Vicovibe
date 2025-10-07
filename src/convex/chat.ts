@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getCurrentUser } from "./users";
 
-const WORKER_URL = "https://<your-worker-name>.workers.dev/api/vicovibe"; // 🔧 replace this
+const WORKER_URL = "https://vicovibe-worker.hardcorgamingstyle.workers.dev/api/vicovibe"; // 🔧 replace this
 
 export const list = query({
   args: { projectId: v.id("projects") },
