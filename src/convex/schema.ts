@@ -19,6 +19,7 @@ export const subscriptionTierValidator = v.union(
   v.literal("free"),
   v.literal("silver"),
   v.literal("gold"),
+  v.literal("platinum"),
   v.literal("diamond"),
 );
 

@@ -69,8 +69,9 @@ export default function Projects() {
     }
   };
 
-  const maxProjects = user?.subscriptionTier === "diamond" ? 10 : 
-                      user?.subscriptionTier === "gold" ? 7 :
+  const maxProjects = user?.subscriptionTier === "diamond" ? 30 : 
+                      user?.subscriptionTier === "platinum" ? 15 :
+                      user?.subscriptionTier === "gold" ? 8 :
                       user?.subscriptionTier === "silver" ? 5 : 3;
 
   return (

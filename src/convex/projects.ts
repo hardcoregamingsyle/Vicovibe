@@ -119,8 +119,9 @@ function getMaxProjects(tier?: string): number {
   switch (tier) {
     case "free": return 3;
     case "silver": return 5;
-    case "gold": return 7;
-    case "diamond": return 10;
+    case "gold": return 8;
+    case "platinum": return 15;
+    case "diamond": return 30;
     default: return 3;
   }
 }
