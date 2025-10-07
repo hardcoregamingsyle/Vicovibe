@@ -15,7 +15,7 @@ import { toast } from "sonner";
 export default function ProjectEditor() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const { isLoading: authLoading, isAuthenticated, user } = useAuth();
+  const { isLoading: authLoading, isAuthenticated, user, signIn } = useAuth();
   const project = useQuery(api.projects.get, slug ? { slug } : "skip");
   const chatMessages = useQuery(
     api.chat.list,
@@ -81,12 +81,16 @@ export default function ProjectEditor() {
     }
   };
 
-  const handleConnectGithub = () => {
+  const handleConnectGithub = async () => {
     setShowConnectDialog(false);
-    // Redirect to Convex Auth GitHub OAuth flow
-    // The redirect parameter ensures user returns to this page after auth
-    const redirectUrl = encodeURIComponent(window.location.href);
-    window.location.href = `${import.meta.env.VITE_CONVEX_URL}/api/auth/signin?provider=github&redirectTo=${redirectUrl}`;
+    try {
+      await signIn("github");
+      // After successful sign-in, the page will reload and ensureGithubConnected will run
+      toast.success("GitHub account connected successfully!");
+    } catch (error) {
+      console.error("GitHub connection error:", error);
+      toast.error("Failed to connect GitHub account");
+    }
   };
 
   const handleDeclineConnect = () => {
