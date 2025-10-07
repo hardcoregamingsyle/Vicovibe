@@ -42,7 +42,8 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-/* Modern Tech Theme with Vibrant Gradients */
+/* Modern Tech Theme with Vibrant Gradients - Dark Mode Default */
+:root.dark,
 :root {
   --radius: 0.75rem;
   --background: oklch(0.99 0 0);

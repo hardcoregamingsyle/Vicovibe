@@ -33,7 +33,7 @@ export default function Landing() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 dark">
       {/* Navigation */}
       <nav className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -46,7 +46,10 @@ export default function Landing() {
             {isAuthenticated ? (
               <Button onClick={() => navigate("/projects")}>Dashboard</Button>
             ) : (
-              <Button onClick={() => navigate("/auth")}>Get Started</Button>
+              <>
+                <Button variant="ghost" onClick={() => navigate("/login")}>Sign In</Button>
+                <Button onClick={() => navigate("/signup")}>Get Started</Button>
+              </>
             )}
           </div>
         </div>
@@ -73,7 +76,7 @@ export default function Landing() {
             Build better applications in less time.
           </p>
           <div className="flex items-center justify-center gap-4">
-            <Button size="lg" onClick={() => navigate(isAuthenticated ? "/projects" : "/auth")} className="gap-2">
+            <Button size="lg" onClick={() => navigate(isAuthenticated ? "/projects" : "/signup")} className="gap-2">
               {isAuthenticated ? "Go to Dashboard" : "Start Free Trial"}
               <ArrowRight className="h-5 w-5" />
             </Button>
@@ -139,7 +142,7 @@ export default function Landing() {
               <Button 
                 size="lg" 
                 variant="secondary" 
-                onClick={() => navigate(isAuthenticated ? "/projects" : "/auth")}
+                onClick={() => navigate(isAuthenticated ? "/projects" : "/signup")}
                 className="gap-2"
               >
                 {isAuthenticated ? "Go to Dashboard" : "Get Started Free"}
