@@ -185,22 +185,83 @@ export default function ProjectEditor() {
   }
 
   const handleSendMessage = async () => {
-    if (!message.trim() || !project) return;
-    
-    setIsSending(true);
-    try {
-      await sendMessage({
-        projectId: project._id,
-        message: message.trim(),
-      });
-      setMessage("");
-      toast.success("Message sent!");
-    } catch (error) {
-      toast.error("Failed to send message");
-    } finally {
+  if (!message.trim() || !project) return;
+
+  setIsSending(true);
+  try {
+    // 1) save user's message in Convex (existing)
+    await sendMessage({
+      projectId: project._id,
+      message: message.trim(),
+    });
+
+    // Clear the input early for UX
+    const userMessage = message.trim();
+    setMessage("");
+
+    // 2) Call your secure Worker gateway to get an AI reply
+    // Ensure VITE_VICOVIBE_API is set in your Cloudflare Pages / hosting env
+    const workerBase = import.meta.env.VITE_VICOVIBE_API || "";
+    if (!workerBase) {
+      toast.error("AI endpoint not configured (VITE_VICOVIBE_API).");
       setIsSending(false);
+      return;
     }
-  };
+
+    // Compose payload; you can add `task` or `model` fields if you want to control routing
+    const payload = {
+      userId: (user as any)?._id || null, // optional
+      projectId: project._id,
+      task: "auto",
+      message: userMessage,
+      max_output_tokens: 1024, // adjust per plan
+    };
+
+    // call the worker
+    const res = await fetch((workerBase.endsWith("/") ? workerBase.slice(0, -1) : workerBase) + "/api/vicovibe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      toast.error("AI call failed: " + errText);
+      setIsSending(false);
+      return;
+    }
+
+    const j = await res.json();
+
+    // 3) Extract a human-friendly reply from the worker response
+    const extractReply = (data: any) => {
+      if (!data) return "";
+      if (typeof data === "string") return data;
+      if (data.reply && typeof data.reply === "string") return data.reply;
+      if (data.data && Array.isArray(data.data)) return data.data[0];
+      if (Array.isArray(data) && data[0] && data[0].generated_text) return data[0].generated_text;
+      // fallback to serialized text
+      return JSON.stringify(data);
+    };
+
+    const aiReply = extractReply(j.reply ?? j.data ?? j);
+
+    // 4) Insert assistant message into Convex chat (so it appears in the UI)
+    await sendAIMessage({
+      projectId: project._id,
+      message: aiReply,
+    });
+
+    // optional: toast success
+    toast.success("AI replied");
+  } catch (error) {
+    console.error("handleSendMessage error:", error);
+    toast.error("Failed to send message or receive AI reply");
+  } finally {
+    setIsSending(false);
+  }
+};
+
 
   const selectedFileContent = selectedFile
     ? projectFiles?.find((f) => f.filePath === selectedFile)?.content
