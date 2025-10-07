@@ -85,7 +85,8 @@ export default function ProjectEditor() {
     setShowConnectDialog(false);
     try {
       await signIn("github");
-      // After successful sign-in, the page will reload and ensureGithubConnected will run
+      // Ensure GitHub connection is synced immediately after sign-in
+      await ensureGithubConnected();
       toast.success("GitHub account connected successfully!");
     } catch (error) {
       console.error("GitHub connection error:", error);
