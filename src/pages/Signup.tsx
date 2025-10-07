@@ -20,7 +20,7 @@ interface SignupProps {
 }
 
 function Signup({ redirectAfterAuth }: SignupProps = {}) {
-  const { isLoading: authLoading, isAuthenticated, signIn } = useAuth();
+  const { isLoading: authLoading, isAuthenticated, signIn, user } = useAuth();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,11 +29,12 @@ function Signup({ redirectAfterAuth }: SignupProps = {}) {
   const [oauthAvailable] = useState(true); // We'll show the buttons, they just won't work without env vars
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated) {
+    // Only redirect if we're not in a loading state and we have confirmed authentication
+    if (!authLoading && isAuthenticated && user !== undefined) {
       const redirect = redirectAfterAuth || "/projects";
       navigate(redirect);
     }
-  }, [authLoading, isAuthenticated, navigate, redirectAfterAuth]);
+  }, [authLoading, isAuthenticated, user, navigate, redirectAfterAuth]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -76,6 +77,15 @@ function Signup({ redirectAfterAuth }: SignupProps = {}) {
       setIsLoading(false);
     }
   };
+
+  // Show loading spinner while checking auth state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center dark bg-background">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col dark bg-background">
