@@ -9,16 +9,16 @@ async function getGithubAccessToken(ctx: any): Promise<string | null> {
   const user = await ctx.runQuery(internal.users.currentUserInternal);
   if (!user) return null;
   
-  // First check if token is stored in user record
-  if (user.githubAccessToken) {
-    return user.githubAccessToken;
-  }
-  
-  // Otherwise, try to get it from authAccounts
+  // Prioritize getting token from authAccounts (OAuth flow)
   const authAccount = await ctx.runQuery(internal.users.getGithubAuthAccount, { userId: user._id });
   
   if (authAccount?.accessToken) {
     return authAccount.accessToken;
+  }
+  
+  // Fallback to user record (manual connection)
+  if (user.githubAccessToken) {
+    return user.githubAccessToken;
   }
   
   return null;
@@ -72,9 +72,14 @@ export const importRepository = action({
     repoFullName: v.string(),
   },
   handler: async (ctx, args) => {
+    const accessToken = await getGithubAccessToken(ctx);
+    if (!accessToken) {
+      throw new Error("GitHub not connected. Please connect your GitHub account first.");
+    }
+    
     const user = await ctx.runQuery(internal.users.currentUserInternal);
-    if (!user || !user.githubAccessToken) {
-      throw new Error("GitHub not connected");
+    if (!user) {
+      throw new Error("User not found");
     }
     
     try {
@@ -83,7 +88,7 @@ export const importRepository = action({
         `https://api.github.com/repos/${args.repoFullName}/git/trees/main?recursive=1`,
         {
           headers: {
-            Authorization: `Bearer ${user.githubAccessToken}`,
+            Authorization: `Bearer ${accessToken}`,
             Accept: "application/vnd.github.v3+json",
             "User-Agent": "Vibe-Coder",
           },
@@ -96,7 +101,7 @@ export const importRepository = action({
           `https://api.github.com/repos/${args.repoFullName}/git/trees/master?recursive=1`,
           {
             headers: {
-              Authorization: `Bearer ${user.githubAccessToken}`,
+              Authorization: `Bearer ${accessToken}`,
               Accept: "application/vnd.github.v3+json",
               "User-Agent": "Vibe-Coder",
             },
@@ -108,10 +113,10 @@ export const importRepository = action({
         }
         
         const data = await masterResponse.json();
-        await processRepoFiles(ctx, args.projectId, args.repoFullName, data.tree, user.githubAccessToken);
+        await processRepoFiles(ctx, args.projectId, args.repoFullName, data.tree, accessToken);
       } else {
         const data = await response.json();
-        await processRepoFiles(ctx, args.projectId, args.repoFullName, data.tree, user.githubAccessToken);
+        await processRepoFiles(ctx, args.projectId, args.repoFullName, data.tree, accessToken);
       }
       
       // Update project with GitHub info
@@ -138,15 +143,15 @@ export const createRepository = action({
     isPrivate: v.boolean(),
   },
   handler: async (ctx, args): Promise<{ success: boolean; repoUrl: string }> => {
-    const user = await ctx.runQuery(internal.users.currentUserInternal);
-    if (!user || !user.githubAccessToken) {
-      throw new Error("GitHub not connected");
+    const accessToken = await getGithubAccessToken(ctx);
+    if (!accessToken) {
+      throw new Error("GitHub not connected. Please connect your GitHub account first.");
     }
     
     const response = await fetch("https://api.github.com/user/repos", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${user.githubAccessToken}`,
+        Authorization: `Bearer ${accessToken}`,
         Accept: "application/vnd.github.v3+json",
         "User-Agent": "Vibe-Coder",
         "Content-Type": "application/json",
@@ -184,9 +189,9 @@ export const syncToGithub = action({
     commitMessage: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.runQuery(internal.users.currentUserInternal);
-    if (!user || !user.githubAccessToken) {
-      throw new Error("GitHub not connected");
+    const accessToken = await getGithubAccessToken(ctx);
+    if (!accessToken) {
+      throw new Error("GitHub not connected. Please connect your GitHub account first.");
     }
     
     // This is a placeholder for the full sync implementation
@@ -206,9 +211,9 @@ export const syncFromGithub = action({
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.runQuery(internal.users.currentUserInternal);
-    if (!user || !user.githubAccessToken) {
-      throw new Error("GitHub not connected");
+    const accessToken = await getGithubAccessToken(ctx);
+    if (!accessToken) {
+      throw new Error("GitHub not connected. Please connect your GitHub account first.");
     }
     
     // This is a placeholder for the full sync implementation
