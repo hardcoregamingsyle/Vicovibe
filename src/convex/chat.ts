@@ -34,50 +34,21 @@ export const send = mutation({
       throw new Error("Project not found");
     }
 
-    // 1️⃣ Insert user message into Convex
-    const msgId = await ctx.db.insert("chatMessages", {
+    // Insert user message
+    await ctx.db.insert("chatMessages", {
       projectId: args.projectId,
       userId: user._id,
       role: "user",
       message: args.message,
     });
 
-    // 2️⃣ Call Cloudflare Worker AI Gateway
-    try {
-      const aiRes = await fetch(WORKER_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: args.message, task: "auto" }),
-      });
+    // 🔹 Run the AI action asynchronously
+    ctx.runAction(api.ai.generateAIResponse, {
+      projectId: args.projectId,
+      prompt: args.message,
+    });
 
-      const data = await aiRes.json();
-
-      // 3️⃣ Store AI reply
-      if (data.ok && data.reply) {
-        await ctx.db.insert("chatMessages", {
-          projectId: args.projectId,
-          userId: user._id,
-          role: "assistant",
-          message: data.reply,
-        });
-      } else {
-        await ctx.db.insert("chatMessages", {
-          projectId: args.projectId,
-          userId: user._id,
-          role: "assistant",
-          message: `Error: ${data.error || "AI failed to respond"}`,
-        });
-      }
-    } catch (err) {
-      await ctx.db.insert("chatMessages", {
-        projectId: args.projectId,
-        userId: user._id,
-        role: "assistant",
-        message: `Error contacting AI: ${String(err)}`,
-      });
-    }
-
-    return msgId;
+    return true;
   },
 });
 
