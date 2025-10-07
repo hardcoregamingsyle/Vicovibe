@@ -37,7 +37,7 @@ export const listUserRepos = action({
   }>> => {
     const accessToken = await getGithubAccessToken(ctx);
     if (!accessToken) {
-      throw new Error("GitHub not connected");
+      throw new Error("GitHub not connected. Please connect your GitHub account first.");
     }
     
     const response = await fetch("https://api.github.com/user/repos?per_page=100&sort=updated", {
@@ -49,7 +49,8 @@ export const listUserRepos = action({
     });
     
     if (!response.ok) {
-      throw new Error("Failed to fetch repositories");
+      const errorText = await response.text();
+      throw new Error(`Failed to fetch repositories: ${response.status} ${errorText}`);
     }
     
     const repos = await response.json();
