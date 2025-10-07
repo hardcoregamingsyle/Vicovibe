@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
 import { getCurrentUser } from "./users";
 
 export const list = query({
@@ -89,6 +89,29 @@ export const update = mutation({
     if (args.content !== undefined) updates.content = args.content;
     
     await ctx.db.patch(args.id, updates);
+  },
+});
+
+export const updateGithubInfo = internalMutation({
+  args: {
+    projectId: v.id("projects"),
+    repoUrl: v.string(),
+    syncEnabled: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Not authenticated");
+    
+    const project = await ctx.db.get(args.projectId);
+    if (!project || project.userId !== user._id) {
+      throw new Error("Project not found");
+    }
+    
+    await ctx.db.patch(args.projectId, {
+      githubRepoUrl: args.repoUrl,
+      githubSyncEnabled: args.syncEnabled,
+      lastGithubSync: Date.now(),
+    });
   },
 });
 

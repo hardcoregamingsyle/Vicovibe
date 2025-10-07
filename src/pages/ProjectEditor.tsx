@@ -9,7 +9,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Loader2, Send, Code2, Eye, Menu, Github } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useAction } from "convex/react";
 import { toast } from "sonner";
 
 export default function ProjectEditor() {
@@ -26,6 +26,7 @@ export default function ProjectEditor() {
     project ? { projectId: project._id } : "skip"
   );
   const sendMessage = useMutation(api.chat.send);
+  const importRepo = useAction(api.github.importRepository);
 
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -33,6 +34,9 @@ export default function ProjectEditor() {
   const [showPreview, setShowPreview] = useState(false);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<"chat" | "sandbox">("chat");
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [repoUrl, setRepoUrl] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -62,6 +66,27 @@ export default function ProjectEditor() {
       </div>
     );
   }
+
+  const handleImportRepo = async () => {
+    if (!repoUrl.trim() || !project) return;
+    
+    setIsImporting(true);
+    try {
+      await importRepo({
+        projectId: project._id,
+        repoUrl: repoUrl.trim(),
+      });
+      toast.success("Repository imported successfully!");
+      setShowImportDialog(false);
+      setRepoUrl("");
+      setSandboxOpen(true);
+    } catch (error) {
+      toast.error("Failed to import repository");
+      console.error(error);
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   const handleSendMessage = async () => {
     if (!message.trim() || !project) return;
@@ -103,7 +128,12 @@ export default function ProjectEditor() {
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-2 hidden sm:flex">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 hidden sm:flex"
+              onClick={() => setShowImportDialog(true)}
+            >
               <Github className="h-4 w-4" />
               Import
             </Button>
@@ -118,6 +148,57 @@ export default function ProjectEditor() {
           </div>
         </div>
       </nav>
+
+      {/* Import Dialog */}
+      {showImportDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md p-6">
+            <h2 className="text-xl font-bold mb-4">Import from GitHub</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">
+                  Repository URL
+                </label>
+                <Input
+                  value={repoUrl}
+                  onChange={(e) => setRepoUrl(e.target.value)}
+                  placeholder="https://github.com/username/repo"
+                  disabled={isImporting}
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowImportDialog(false);
+                    setRepoUrl("");
+                  }}
+                  disabled={isImporting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleImportRepo}
+                  disabled={isImporting || !repoUrl.trim()}
+                  className="gap-2"
+                >
+                  {isImporting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Importing...
+                    </>
+                  ) : (
+                    <>
+                      <Github className="h-4 w-4" />
+                      Import
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
