@@ -12,9 +12,9 @@ async function getGithubAccessToken(ctx: any): Promise<string | null> {
   // Prioritize getting token from authAccounts (OAuth flow)
   const authAccount = await ctx.runQuery(internal.users.getGithubAuthAccount, { userId: user._id });
   
-  // Convex Auth stores the token in the 'access_token' field within authAccount
-  if (authAccount?.access_token) {
-    return authAccount.access_token;
+  // Convex Auth stores the token in the 'accessToken' field within authAccount
+  if (authAccount?.accessToken) {
+    return authAccount.accessToken;
   }
   
   // Fallback to user record (manual connection)

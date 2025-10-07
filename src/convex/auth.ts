@@ -8,7 +8,19 @@ import Google from "@auth/core/providers/google";
 const providers: any[] = [Password];
 
 if (process.env.AUTH_GITHUB_ID && process.env.AUTH_GITHUB_SECRET) {
-  providers.push(GitHub);
+  providers.push(
+    GitHub({
+      profile(profile, tokens) {
+        return {
+          id: profile.id.toString(),
+          name: profile.name,
+          email: profile.email,
+          image: profile.avatar_url,
+          accessToken: tokens.access_token,
+        };
+      },
+    })
+  );
 }
 
 if (process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET) {

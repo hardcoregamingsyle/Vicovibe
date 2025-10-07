@@ -26,6 +26,15 @@ export const subscriptionTierValidator = v.union(
 const schema = defineSchema(
   {
     ...authTables,
+    
+    authAccounts: defineTable({
+      userId: v.id("users"),
+      provider: v.string(),
+      providerAccountId: v.string(),
+      accessToken: v.optional(v.string()),
+    })
+      .index("userIdAndProvider", ["userId", "provider"])
+      .index("providerAndAccountId", ["provider", "providerAccountId"]),
 
     users: defineTable({
       name: v.optional(v.string()),
