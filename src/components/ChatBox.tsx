@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useChat } from "../hooks/useChat";
+import { Id } from "@/convex/_generated/dataModel";
 
 interface ChatBoxProps {
-  projectId: string;
+  projectId: Id<"projects">;
 }
 
 const ChatBox: React.FC<ChatBoxProps> = ({ projectId }) => {

@@ -1,22 +1,16 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
-import { getCurrentUser } from "./users";
-
-const WORKER_URL = "https://vicovibe-worker.hardcorgamingstyle.workers.dev/api/vicovibe"; // 🔧 replace this
+import { mutation, query, internalMutation } from "./_generated/server";
+import { api } from "./_generated/api";
 
 export const list = query({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return [];
-
-    const project = await ctx.db.get(args.projectId);
-    if (!project || project.userId !== user._id) return [];
-
-    return await ctx.db
+    const messages = await ctx.db
       .query("chatMessages")
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
       .collect();
+    
+    return messages;
   },
 });
 
@@ -26,46 +20,39 @@ export const send = mutation({
     message: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) throw new Error("Not authenticated");
-
-    const project = await ctx.db.get(args.projectId);
-    if (!project || project.userId !== user._id) {
-      throw new Error("Project not found");
+    const userId = await ctx.auth.getUserIdentity();
+    if (!userId) {
+      throw new Error("Not authenticated");
     }
 
-    // Insert user message
+    // Store user message
     await ctx.db.insert("chatMessages", {
       projectId: args.projectId,
-      userId: user._id,
+      userId: userId.subject as any,
       role: "user",
       message: args.message,
     });
 
-    // 🔹 Run the AI action asynchronously
-    ctx.runAction(api.ai.generateAIResponse, {
+    // Schedule AI response action (non-blocking)
+    await ctx.scheduler.runAfter(0, api.ai.generateAIResponse, {
       projectId: args.projectId,
       prompt: args.message,
     });
 
-    return true;
+    return { success: true };
   },
 });
 
-export const sendAI = mutation({
-  args: { projectId: v.id("projects"), message: v.string() },
+export const addAssistantMessage = internalMutation({
+  args: {
+    projectId: v.id("projects"),
+    userId: v.id("users"),
+    message: v.string(),
+  },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) throw new Error("Not authenticated");
-
-    const project = await ctx.db.get(args.projectId);
-    if (!project || project.userId !== user._id) {
-      throw new Error("Project not found");
-    }
-
-    return await ctx.db.insert("chatMessages", {
+    await ctx.db.insert("chatMessages", {
       projectId: args.projectId,
-      userId: user._id,
+      userId: args.userId,
       role: "assistant",
       message: args.message,
     });

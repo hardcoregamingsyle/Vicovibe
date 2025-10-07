@@ -26,7 +26,6 @@ export default function ProjectEditor() {
     project ? { projectId: project._id } : "skip"
   );
   const sendMessage = useMutation(api.chat.send);
-  const sendAIMessage = useMutation(api.chat.sendAI);
   const listRepos = useAction(api.github.listUserRepos);
   const importRepo = useAction(api.github.importRepository);
   const createRepo = useAction(api.github.createRepository);
@@ -247,13 +246,7 @@ export default function ProjectEditor() {
 
     const aiReply = extractReply(j.reply ?? j.data ?? j);
 
-    // 4) Insert assistant message into Convex chat (so it appears in the UI)
-    await sendAIMessage({
-      projectId: project._id,
-      message: aiReply,
-    });
-
-    // optional: toast success
+    // The AI response will be automatically added to chat by the backend action
     toast.success("AI replied");
   } catch (error) {
     console.error("handleSendMessage error:", error);
