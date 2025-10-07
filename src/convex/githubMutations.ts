@@ -23,6 +23,17 @@ export const ensureGithubConnected = mutation({
         githubConnected: true,
         githubUsername: authAccount.providerAccountId,
       });
+      return { connected: true };
+    }
+    
+    // If they don't have a GitHub auth account but are marked as connected, fix it
+    if (!authAccount && user.githubConnected) {
+      await ctx.db.patch(user._id, {
+        githubConnected: false,
+        githubUsername: undefined,
+        githubAccessToken: undefined,
+      });
+      return { connected: false };
     }
     
     return { connected: !!authAccount };
