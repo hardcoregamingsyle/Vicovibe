@@ -37,6 +37,9 @@ const schema = defineSchema(
       subscriptionTier: v.optional(subscriptionTierValidator),
       tokensUsed: v.optional(v.number()),
       checksUsed: v.optional(v.number()),
+      githubAccessToken: v.optional(v.string()),
+      githubUsername: v.optional(v.string()),
+      githubConnected: v.optional(v.boolean()),
     }).index("email", ["email"]),
 
     projects: defineTable({
@@ -49,6 +52,7 @@ const schema = defineSchema(
       githubRepoUrl: v.optional(v.string()),
       githubSyncEnabled: v.optional(v.boolean()),
       lastGithubSync: v.optional(v.number()),
+      githubBranch: v.optional(v.string()),
     })
       .index("by_user", ["userId"])
       .index("by_slug", ["slug"]),
@@ -66,6 +70,7 @@ const schema = defineSchema(
       filePath: v.string(),
       content: v.string(),
       lastModified: v.number(),
+      lastSyncedVersion: v.optional(v.string()),
     })
       .index("by_project", ["projectId"]),
   },

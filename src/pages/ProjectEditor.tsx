@@ -6,7 +6,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { api } from "@/convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import { motion } from "framer-motion";
-import { ArrowLeft, Loader2, Send, Code2, Eye, Menu, Github } from "lucide-react";
+import { ArrowLeft, Loader2, Send, Code2, Eye, Menu, Github, GitBranch, RefreshCw } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useMutation, useQuery, useAction } from "convex/react";
@@ -15,7 +15,7 @@ import { toast } from "sonner";
 export default function ProjectEditor() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const { isLoading: authLoading, isAuthenticated } = useAuth();
+  const { isLoading: authLoading, isAuthenticated, user } = useAuth();
   const project = useQuery(api.projects.get, slug ? { slug } : "skip");
   const chatMessages = useQuery(
     api.chat.list,
@@ -26,7 +26,11 @@ export default function ProjectEditor() {
     project ? { projectId: project._id } : "skip"
   );
   const sendMessage = useMutation(api.chat.send);
+  const listRepos = useAction(api.github.listUserRepos);
   const importRepo = useAction(api.github.importRepository);
+  const createRepo = useAction(api.github.createRepository);
+  const connectGithub = useMutation(api.githubMutations.connectGithubAccount);
+  const disconnectGithub = useMutation(api.githubMutations.disconnectGithubAccount);
 
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -34,14 +38,87 @@ export default function ProjectEditor() {
   const [showPreview, setShowPreview] = useState(false);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<"chat" | "sandbox">("chat");
-  const [showImportDialog, setShowImportDialog] = useState(false);
-  const [repoUrl, setRepoUrl] = useState("");
-  const [isImporting, setIsImporting] = useState(false);
+  const [showGithubDialog, setShowGithubDialog] = useState(false);
+  const [githubAction, setGithubAction] = useState<"import" | "create" | null>(null);
+  const [userRepos, setUserRepos] = useState<any[]>([]);
+  const [selectedRepo, setSelectedRepo] = useState("");
+  const [newRepoName, setNewRepoName] = useState("");
+  const [newRepoDescription, setNewRepoDescription] = useState("");
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
+
+  const isGithubConnected = user?.githubConnected;
+
+  const handleOpenGithubDialog = async () => {
+    if (!isGithubConnected) {
+      toast.error("Please connect your GitHub account first");
+      return;
+    }
+    
+    setShowGithubDialog(true);
+    setGithubAction(null);
+  };
+
+  const handleSelectAction = async (action: "import" | "create") => {
+    setGithubAction(action);
+    
+    if (action === "import") {
+      setIsLoading(true);
+      try {
+        const repos = await listRepos();
+        setUserRepos(repos);
+      } catch (error) {
+        toast.error("Failed to load repositories");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const handleImportRepo = async () => {
+    if (!selectedRepo || !project) return;
+    
+    setIsLoading(true);
+    try {
+      await importRepo({
+        projectId: project._id,
+        repoFullName: selectedRepo,
+      });
+      toast.success("Repository imported successfully!");
+      setShowGithubDialog(false);
+      setSandboxOpen(true);
+    } catch (error) {
+      toast.error("Failed to import repository");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateRepo = async () => {
+    if (!newRepoName.trim() || !project) return;
+    
+    setIsLoading(true);
+    try {
+      await createRepo({
+        projectId: project._id,
+        repoName: newRepoName.trim(),
+        description: newRepoDescription || undefined,
+        isPrivate,
+      });
+      toast.success("Repository created successfully!");
+      setShowGithubDialog(false);
+      setSandboxOpen(true);
+    } catch (error) {
+      toast.error("Failed to create repository");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   if (authLoading || project === undefined) {
     return (
@@ -66,27 +143,6 @@ export default function ProjectEditor() {
       </div>
     );
   }
-
-  const handleImportRepo = async () => {
-    if (!repoUrl.trim() || !project) return;
-    
-    setIsImporting(true);
-    try {
-      await importRepo({
-        projectId: project._id,
-        repoUrl: repoUrl.trim(),
-      });
-      toast.success("Repository imported successfully!");
-      setShowImportDialog(false);
-      setRepoUrl("");
-      setSandboxOpen(true);
-    } catch (error) {
-      toast.error("Failed to import repository");
-      console.error(error);
-    } finally {
-      setIsImporting(false);
-    }
-  };
 
   const handleSendMessage = async () => {
     if (!message.trim() || !project) return;
@@ -126,16 +182,22 @@ export default function ProjectEditor() {
             <span className="text-sm text-muted-foreground hidden md:inline">
               {project.name}
             </span>
+            {project.githubRepoUrl && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <GitBranch className="h-3 w-3" />
+                <span>Synced</span>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
               className="gap-2 hidden sm:flex"
-              onClick={() => setShowImportDialog(true)}
+              onClick={handleOpenGithubDialog}
             >
               <Github className="h-4 w-4" />
-              Import
+              {isGithubConnected ? "GitHub" : "Connect GitHub"}
             </Button>
             <Button
               variant="outline"
@@ -149,53 +211,142 @@ export default function ProjectEditor() {
         </div>
       </nav>
 
-      {/* Import Dialog */}
-      {showImportDialog && (
+      {/* GitHub Dialog */}
+      {showGithubDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <Card className="w-full max-w-md p-6">
-            <h2 className="text-xl font-bold mb-4">Import from GitHub</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">
-                  Repository URL
-                </label>
-                <Input
-                  value={repoUrl}
-                  onChange={(e) => setRepoUrl(e.target.value)}
-                  placeholder="https://github.com/username/repo"
-                  disabled={isImporting}
-                />
-              </div>
-              <div className="flex gap-2 justify-end">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <Github className="h-5 w-5" />
+              GitHub Integration
+            </h2>
+            
+            {!githubAction ? (
+              <div className="space-y-3">
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    setShowImportDialog(false);
-                    setRepoUrl("");
-                  }}
-                  disabled={isImporting}
+                  className="w-full justify-start gap-2"
+                  onClick={() => handleSelectAction("import")}
+                >
+                  <GitBranch className="h-4 w-4" />
+                  Import Existing Repository
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-2"
+                  onClick={() => handleSelectAction("create")}
+                >
+                  <Github className="h-4 w-4" />
+                  Create New Repository
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => setShowGithubDialog(false)}
                 >
                   Cancel
                 </Button>
-                <Button
-                  onClick={handleImportRepo}
-                  disabled={isImporting || !repoUrl.trim()}
-                  className="gap-2"
-                >
-                  {isImporting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Importing...
-                    </>
-                  ) : (
-                    <>
-                      <Github className="h-4 w-4" />
-                      Import
-                    </>
-                  )}
-                </Button>
               </div>
-            </div>
+            ) : githubAction === "import" ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">
+                    Select Repository
+                  </label>
+                  {isLoading ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedRepo}
+                      onChange={(e) => setSelectedRepo(e.target.value)}
+                      className="w-full p-2 border rounded"
+                    >
+                      <option value="">Choose a repository...</option>
+                      {userRepos.map((repo) => (
+                        <option key={repo.id} value={repo.fullName}>
+                          {repo.fullName}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => setGithubAction(null)}
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    onClick={handleImportRepo}
+                    disabled={isLoading || !selectedRepo}
+                    className="gap-2"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Github className="h-4 w-4" />
+                    )}
+                    Import
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">
+                    Repository Name
+                  </label>
+                  <Input
+                    value={newRepoName}
+                    onChange={(e) => setNewRepoName(e.target.value)}
+                    placeholder="my-awesome-project"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">
+                    Description (Optional)
+                  </label>
+                  <Textarea
+                    value={newRepoDescription}
+                    onChange={(e) => setNewRepoDescription(e.target.value)}
+                    placeholder="What's this project about?"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="private"
+                    checked={isPrivate}
+                    onChange={(e) => setIsPrivate(e.target.checked)}
+                  />
+                  <label htmlFor="private" className="text-sm">
+                    Make repository private
+                  </label>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => setGithubAction(null)}
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    onClick={handleCreateRepo}
+                    disabled={isLoading || !newRepoName.trim()}
+                    className="gap-2"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Github className="h-4 w-4" />
+                    )}
+                    Create
+                  </Button>
+                </div>
+              </div>
+            )}
           </Card>
         </div>
       )}

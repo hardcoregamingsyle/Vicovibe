@@ -4,29 +4,65 @@ import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 
+// List user's GitHub repositories
+export const listUserRepos = action({
+  args: {},
+  handler: async (ctx): Promise<Array<{
+    id: number;
+    name: string;
+    fullName: string;
+    url: string;
+    description: string | null;
+    private: boolean;
+  }>> => {
+    const user = await ctx.runQuery(internal.users.currentUserInternal);
+    if (!user || !user.githubAccessToken) {
+      throw new Error("GitHub not connected");
+    }
+    
+    const response = await fetch("https://api.github.com/user/repos?per_page=100&sort=updated", {
+      headers: {
+        Authorization: `Bearer ${user.githubAccessToken}`,
+        Accept: "application/vnd.github.v3+json",
+        "User-Agent": "Vibe-Coder",
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error("Failed to fetch repositories");
+    }
+    
+    const repos = await response.json();
+    return repos.map((repo: any) => ({
+      id: repo.id,
+      name: repo.name,
+      fullName: repo.full_name,
+      url: repo.html_url,
+      description: repo.description,
+      private: repo.private,
+    }));
+  },
+});
+
+// Import existing repository
 export const importRepository = action({
   args: {
     projectId: v.id("projects"),
-    repoUrl: v.string(),
+    repoFullName: v.string(),
   },
   handler: async (ctx, args) => {
-    // Parse GitHub URL to extract owner and repo
-    const urlPattern = /github\.com\/([^\/]+)\/([^\/]+)/;
-    const match = args.repoUrl.match(urlPattern);
-    
-    if (!match) {
-      throw new Error("Invalid GitHub URL format");
+    const user = await ctx.runQuery(internal.users.currentUserInternal);
+    if (!user || !user.githubAccessToken) {
+      throw new Error("GitHub not connected");
     }
     
-    const [, owner, repo] = match;
-    const cleanRepo = repo.replace(/\.git$/, "");
-    
     try {
-      // Fetch repository contents from GitHub API
+      // Fetch repository tree
       const response = await fetch(
-        `https://api.github.com/repos/${owner}/${cleanRepo}/git/trees/main?recursive=1`,
+        `https://api.github.com/repos/${args.repoFullName}/git/trees/main?recursive=1`,
         {
           headers: {
+            Authorization: `Bearer ${user.githubAccessToken}`,
             Accept: "application/vnd.github.v3+json",
             "User-Agent": "Vibe-Coder",
           },
@@ -34,11 +70,12 @@ export const importRepository = action({
       );
       
       if (!response.ok) {
-        // Try 'master' branch if 'main' doesn't exist
+        // Try master branch
         const masterResponse = await fetch(
-          `https://api.github.com/repos/${owner}/${cleanRepo}/git/trees/master?recursive=1`,
+          `https://api.github.com/repos/${args.repoFullName}/git/trees/master?recursive=1`,
           {
             headers: {
+              Authorization: `Bearer ${user.githubAccessToken}`,
               Accept: "application/vnd.github.v3+json",
               "User-Agent": "Vibe-Coder",
             },
@@ -50,16 +87,16 @@ export const importRepository = action({
         }
         
         const data = await masterResponse.json();
-        await processRepoFiles(ctx, args.projectId, owner, cleanRepo, data.tree);
+        await processRepoFiles(ctx, args.projectId, args.repoFullName, data.tree, user.githubAccessToken);
       } else {
         const data = await response.json();
-        await processRepoFiles(ctx, args.projectId, owner, cleanRepo, data.tree);
+        await processRepoFiles(ctx, args.projectId, args.repoFullName, data.tree, user.githubAccessToken);
       }
       
       // Update project with GitHub info
       await ctx.runMutation(internal.projects.updateGithubInfo, {
         projectId: args.projectId,
-        repoUrl: args.repoUrl,
+        repoUrl: `https://github.com/${args.repoFullName}`,
         syncEnabled: true,
       });
       
@@ -71,23 +108,115 @@ export const importRepository = action({
   },
 });
 
+// Create new GitHub repository
+export const createRepository = action({
+  args: {
+    projectId: v.id("projects"),
+    repoName: v.string(),
+    description: v.optional(v.string()),
+    isPrivate: v.boolean(),
+  },
+  handler: async (ctx, args): Promise<{ success: boolean; repoUrl: string }> => {
+    const user = await ctx.runQuery(internal.users.currentUserInternal);
+    if (!user || !user.githubAccessToken) {
+      throw new Error("GitHub not connected");
+    }
+    
+    const response = await fetch("https://api.github.com/user/repos", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${user.githubAccessToken}`,
+        Accept: "application/vnd.github.v3+json",
+        "User-Agent": "Vibe-Coder",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: args.repoName,
+        description: args.description || "Created with Vibe Coder",
+        private: args.isPrivate,
+        auto_init: true,
+      }),
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(`Failed to create repository: ${error.message}`);
+    }
+    
+    const repo = await response.json();
+    
+    // Update project with GitHub info
+    await ctx.runMutation(internal.projects.updateGithubInfo, {
+      projectId: args.projectId,
+      repoUrl: repo.html_url,
+      syncEnabled: true,
+    });
+    
+    return { success: true, repoUrl: repo.html_url };
+  },
+});
+
+// Sync local changes to GitHub
+export const syncToGithub = action({
+  args: {
+    projectId: v.id("projects"),
+    commitMessage: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.runQuery(internal.users.currentUserInternal);
+    if (!user || !user.githubAccessToken) {
+      throw new Error("GitHub not connected");
+    }
+    
+    // This is a placeholder for the full sync implementation
+    // Full implementation would:
+    // 1. Get all project files
+    // 2. Create a tree with all files
+    // 3. Create a commit
+    // 4. Update the branch reference
+    
+    throw new Error("Sync to GitHub not yet fully implemented");
+  },
+});
+
+// Sync GitHub changes to local
+export const syncFromGithub = action({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.runQuery(internal.users.currentUserInternal);
+    if (!user || !user.githubAccessToken) {
+      throw new Error("GitHub not connected");
+    }
+    
+    // This is a placeholder for the full sync implementation
+    // Full implementation would:
+    // 1. Fetch latest commit from GitHub
+    // 2. Compare with local version
+    // 3. Pull changed files
+    // 4. Update local files
+    
+    throw new Error("Sync from GitHub not yet fully implemented");
+  },
+});
+
 async function processRepoFiles(
   ctx: any,
   projectId: any,
-  owner: string,
-  repo: string,
-  tree: any[]
+  repoFullName: string,
+  tree: any[],
+  accessToken: string
 ) {
-  // Filter only files (not directories)
   const files = tree.filter((item: any) => item.type === "blob");
   
-  // Fetch content for each file
   for (const file of files) {
     try {
       const contentResponse = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/contents/${file.path}`,
+        `https://api.github.com/repos/${repoFullName}/contents/${file.path}`,
         {
           headers: {
+            Authorization: `Bearer ${accessToken}`,
             Accept: "application/vnd.github.v3.raw",
             "User-Agent": "Vibe-Coder",
           },
@@ -97,7 +226,6 @@ async function processRepoFiles(
       if (contentResponse.ok) {
         const content = await contentResponse.text();
         
-        // Save file to project
         await ctx.runMutation(internal.files.upsertInternal, {
           projectId,
           filePath: file.path,
