@@ -203,17 +203,6 @@ function Signup({ redirectAfterAuth }: SignupProps = {}) {
               </Button>
             </p>
           </CardFooter>
-          <div className="py-4 px-6 text-xs text-center text-muted-foreground bg-muted border-t rounded-b-lg">
-            Secured by{" "}
-            <a
-              href="https://vly.ai"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-primary transition-colors"
-            >
-              vly.ai
-            </a>
-          </div>
         </Card>
       </div>
     </div>
