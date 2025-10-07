@@ -26,6 +26,7 @@ export default function ProjectEditor() {
     project ? { projectId: project._id } : "skip"
   );
   const sendMessage = useMutation(api.chat.send);
+  const sendAIMessage = useMutation(api.chat.sendAI);
   const listRepos = useAction(api.github.listUserRepos);
   const importRepo = useAction(api.github.importRepository);
   const createRepo = useAction(api.github.createRepository);
