@@ -8,6 +8,7 @@ export const list = query({
     const messages = await ctx.db
       .query("chatMessages")
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .order("asc")
       .collect();
     
     return messages;
