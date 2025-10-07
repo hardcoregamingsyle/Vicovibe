@@ -39,6 +39,7 @@ export default function ProjectEditor() {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<"chat" | "sandbox">("chat");
   const [showGithubDialog, setShowGithubDialog] = useState(false);
+  const [showConnectDialog, setShowConnectDialog] = useState(false);
   const [githubAction, setGithubAction] = useState<"import" | "create" | null>(null);
   const [userRepos, setUserRepos] = useState<any[]>([]);
   const [selectedRepo, setSelectedRepo] = useState("");
@@ -56,12 +57,23 @@ export default function ProjectEditor() {
 
   const handleOpenGithubDialog = async () => {
     if (!isGithubConnected) {
-      toast.error("Please connect your GitHub account first");
+      setShowConnectDialog(true);
       return;
     }
     
     setShowGithubDialog(true);
     setGithubAction(null);
+  };
+
+  const handleConnectGithub = () => {
+    setShowConnectDialog(false);
+    // Redirect to GitHub OAuth flow
+    window.location.href = `${import.meta.env.VITE_CONVEX_URL}/api/auth/github`;
+  };
+
+  const handleDeclineConnect = () => {
+    setShowConnectDialog(false);
+    toast.error("You need to connect your GitHub account to import GitHub repositories");
   };
 
   const handleSelectAction = async (action: "import" | "create") => {
@@ -210,6 +222,36 @@ export default function ProjectEditor() {
           </div>
         </div>
       </nav>
+
+      {/* GitHub Connect Confirmation Dialog */}
+      {showConnectDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md p-6">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <Github className="h-5 w-5" />
+              Connect GitHub Account
+            </h2>
+            <p className="text-muted-foreground mb-6">
+              Do you want to connect your GitHub account? This will allow you to import existing repositories and create new ones.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={handleDeclineConnect}
+              >
+                No
+              </Button>
+              <Button
+                onClick={handleConnectGithub}
+                className="gap-2"
+              >
+                <Github className="h-4 w-4" />
+                Yes, Connect
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* GitHub Dialog */}
       {showGithubDialog && (
