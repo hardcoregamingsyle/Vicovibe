@@ -1,6 +1,6 @@
 // src/convex/chat.ts
 import { v } from "convex/values";
-import { mutation, query, internalMutation } from "./_generated/server";
+import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { api } from "./_generated/api";
 
 export const list = query({
@@ -17,7 +17,7 @@ export const list = query({
 export const send = mutation({
   args: { projectId: v.id("projects"), message: v.string() },
   handler: async (ctx, args) => {
-    const user = await ctx.auth.getUser();
+    const user = await ctx.auth.getUserIdentity();
     if (!user) throw new Error("Not authenticated");
 
     const project = await ctx.db.get(args.projectId);
@@ -26,13 +26,13 @@ export const send = mutation({
     // Insert user's message
     await ctx.db.insert("chatMessages", {
       projectId: args.projectId,
-      userId: user._id,
+      userId: user.subject as any,
       role: "user",
       message: args.message
     });
 
     // Trigger AI action asynchronously (non-blocking)
-    ctx.runAction(api.ai.generateAIResponse, {
+    await ctx.scheduler.runAfter(0, api.ai.generateAIResponse, {
       projectId: args.projectId,
       prompt: args.message
     });
@@ -56,7 +56,7 @@ export const addAssistantMessage = internalMutation({
   },
 });
 
-export const listInternal = query({
+export const listInternal = internalQuery({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
     return await ctx.db

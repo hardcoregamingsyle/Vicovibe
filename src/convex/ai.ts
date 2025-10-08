@@ -17,12 +17,12 @@ export const generateAIResponse = action({
     console.log("✨ [AI Action] Called with prompt:", args.prompt);
 
     // Fetch recent chat history (last 10 messages)
-    let chatHistory = [];
+    let chatHistory: Array<{ role: string; message: string }> = [];
     try {
       const recent = await ctx.runQuery(internal.chat.listInternal, {
         projectId: args.projectId,
       });
-      chatHistory = recent.slice(-10).map((m) => ({
+      chatHistory = recent.slice(-10).map((m: any) => ({
         role: m.role,
         message: m.message,
       }));
