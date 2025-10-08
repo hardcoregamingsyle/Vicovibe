@@ -2,7 +2,9 @@
 
 import { action } from "./_generated/server";
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
+
+const WORKER_URL = process.env.VICOVIBE_WORKER_URL ||
+  "https://vicovibe-worker.hardcorgamingstyle.workers.dev/api/vicovibe";
 
 export const generateAIResponse = action({
   args: {
@@ -10,55 +12,88 @@ export const generateAIResponse = action({
     prompt: v.string(),
   },
   handler: async (ctx, args) => {
+    // Log input
+    console.log("✨ [AI Action] Called with prompt:", args.prompt);
+
+    // Fetch recent chat history (last 10 messages)
+    let chatHistory = [];
     try {
-      // Get current user
-      const user = await ctx.runQuery(internal.users.currentUserInternal);
-      if (!user) {
-        throw new Error("User not authenticated");
-      }
-
-      // Call your Cloudflare Worker endpoint
-      const response = await fetch(
-        "https://vicovibe-worker.hardcorgamingstyle.workers.dev/api/ai",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            projectId: args.projectId,
-            prompt: args.prompt,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Worker error: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      const aiReply = data.reply || "AI returned no response.";
-
-      // Store AI response in chat
-      await ctx.runMutation(internal.chat.addAssistantMessage, {
-        projectId: args.projectId,
-        userId: user._id,
-        message: aiReply,
-      });
-
-      return aiReply;
-    } catch (error: any) {
-      console.error("AI Action Error:", error);
-      
-      // Store error message as assistant response
-      const user = await ctx.runQuery(internal.users.currentUserInternal);
-      if (user) {
-        await ctx.runMutation(internal.chat.addAssistantMessage, {
-          projectId: args.projectId,
-          userId: user._id,
-          message: "Sorry, I encountered an error processing your request. Please try again.",
-        });
-      }
-      
-      return "Error contacting AI.";
+      const recent = await ctx.db
+        .query("chatMessages")
+        .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+        .order("desc")
+        .limit(10)
+        .collect();
+      chatHistory = recent.reverse().map((m) => ({
+        role: m.role,
+        message: m.message,
+      }));
+      console.log("📝 [AI Action] Chat history:", chatHistory);
+    } catch (err) {
+      console.error("⚠️ [AI Action] Failed to fetch chat history:", err);
     }
+
+    // Prepare the payload to Worker
+    const payload = {
+      message: args.prompt,
+      projectId: args.projectId,
+      chatHistory,
+    };
+
+    console.log("➡️ [AI Action] Sending payload to Worker:", payload);
+
+    // Call your Worker
+    let data: any = null;
+    try {
+      const resp = await fetch(WORKER_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      console.log("⬅️ [AI Action] Worker response status:", resp.status);
+      const text = await resp.text();
+      console.log("📬 [AI Action] Worker raw text:", text);
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { final: text, reply: text };
+      }
+      console.log("📦 [AI Action] Parsed data:", data);
+    } catch (err: any) {
+      console.error("🚨 [AI Action] Error calling Worker:", err);
+      // Insert an assistant message indicating failure
+      await ctx.db.insert("chatMessages", {
+        projectId: args.projectId,
+        userId: null,
+        role: "assistant",
+        message: `Error contacting AI server: ${String(err)}`,
+      });
+      return { ok: false, error: String(err) };
+    }
+
+    // Extract final reply
+    let finalText = "";
+    if (data && (data.final || data.reply)) {
+      finalText = data.final ?? data.reply;
+    } else {
+      finalText = "⚠️ AI returned no reply.";
+    }
+
+    console.log("✅ [AI Action] Final AI reply:", finalText);
+
+    // Insert assistant message
+    try {
+      await ctx.db.insert("chatMessages", {
+        projectId: args.projectId,
+        userId: null,
+        role: "assistant",
+        message: finalText,
+      });
+      console.log("📝 [AI Action] Assistant message inserted");
+    } catch (err) {
+      console.error("🚨 [AI Action] Failed to insert assistant message:", err);
+    }
+
+    return { ok: true, final: finalText };
   },
 });
