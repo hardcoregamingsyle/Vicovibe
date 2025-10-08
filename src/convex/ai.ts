@@ -2,6 +2,7 @@
 
 import { action } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 
 const WORKER_URL = process.env.VICOVIBE_WORKER_URL ||
   "https://vicovibe-worker.hardcorgamingstyle.workers.dev/api/vicovibe";
@@ -18,13 +19,10 @@ export const generateAIResponse = action({
     // Fetch recent chat history (last 10 messages)
     let chatHistory = [];
     try {
-      const recent = await ctx.db
-        .query("chatMessages")
-        .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-        .order("desc")
-        .limit(10)
-        .collect();
-      chatHistory = recent.reverse().map((m) => ({
+      const recent = await ctx.runQuery(internal.chat.listInternal, {
+        projectId: args.projectId,
+      });
+      chatHistory = recent.slice(-10).map((m) => ({
         role: m.role,
         message: m.message,
       }));
@@ -62,10 +60,8 @@ export const generateAIResponse = action({
     } catch (err: any) {
       console.error("🚨 [AI Action] Error calling Worker:", err);
       // Insert an assistant message indicating failure
-      await ctx.db.insert("chatMessages", {
+      await ctx.runMutation(internal.chat.addAssistantMessage, {
         projectId: args.projectId,
-        userId: null,
-        role: "assistant",
         message: `Error contacting AI server: ${String(err)}`,
       });
       return { ok: false, error: String(err) };
@@ -83,10 +79,8 @@ export const generateAIResponse = action({
 
     // Insert assistant message
     try {
-      await ctx.db.insert("chatMessages", {
+      await ctx.runMutation(internal.chat.addAssistantMessage, {
         projectId: args.projectId,
-        userId: null,
-        role: "assistant",
         message: finalText,
       });
       console.log("📝 [AI Action] Assistant message inserted");

@@ -1,6 +1,6 @@
 // src/convex/chat.ts
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
 import { api } from "./_generated/api";
 
 export const list = query({
@@ -38,5 +38,31 @@ export const send = mutation({
     });
 
     return true;
+  }
+});
+
+export const addAssistantMessage = internalMutation({
+  args: {
+    projectId: v.id("projects"),
+    message: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("chatMessages", {
+      projectId: args.projectId,
+      userId: null as any,
+      role: "assistant",
+      message: args.message,
+    });
+  },
+});
+
+export const listInternal = query({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("chatMessages")
+      .withIndex("by_project", q => q.eq("projectId", args.projectId))
+      .order("asc")
+      .collect();
   }
 });
