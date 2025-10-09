@@ -5,37 +5,42 @@ import { v } from "convex/values";
 const HF_TOKEN = process.env.HUGGINGFACE_TOKEN || "";
 const HF_API_BASE = "https://api-inference.huggingface.co/models";
 
-// Model endpoints organized by task type - using verified, publicly accessible models
+// Model endpoints organized by task type - using specified Hugging Face repositories
 export const MODELS = {
   CODING: [
-    "nvidia/Llama-4-Maverick-17B-128E-Instruct-FP8",
-    "nvidia/Llama-4-Scout-17B-16E-Instruct-FP8",
+    "deepseek-ai/DeepSeek-V3.1",
+    "Qwen/Qwen3-Coder-480B-A35B-Instruct",
   ],
   THINKING: [
-    "nvidia/Llama-3.1-405B-Instruct-FP8",
-    "nvidia/Llama-4-Maverick-17B-128E-Instruct-FP8",
+    "unsloth/DeepSeek-R1-0528",
+    "unsloth/gpt-oss-120b",
+    "databricks/dbrx-instruct",
   ],
   GENERATIVE: [
+    "bigscience/bloom",
     "nvidia/Llama-4-Maverick-17B-128E-Instruct-FP8",
-    "nvidia/Llama-3.1-405B-Instruct-FP8",
-    "nvidia/Llama-4-Scout-17B-16E-Instruct-FP8",
+    "deepseek-ai/DeepSeek-V3.1",
   ],
   CODE_ANALYSIS: [
+    "Qwen/Qwen3-Coder-480B-A35B-Instruct",
     "nvidia/Llama-4-Maverick-17B-128E-Instruct-FP8",
-    "nvidia/Llama-4-Scout-17B-16E-Instruct-FP8",
+    "deepseek-ai/DeepSeek-V3.1",
   ],
   PLANNING: [
     "nvidia/Llama-3.1-405B-Instruct-FP8",
-    "nvidia/Llama-4-Maverick-17B-128E-Instruct-FP8",
+    "databricks/dbrx-instruct",
+    "Qwen/Qwen3-Coder-480B-A35B-Instruct",
     "nvidia/Llama-4-Scout-17B-16E-Instruct-FP8",
   ],
   CREATIVITY: [
-    "nvidia/Llama-4-Maverick-17B-128E-Instruct-FP8",
-    "nvidia/Llama-3.1-405B-Instruct-FP8",
+    "mistralai/Mixtral-8x22B-v0.1",
+    "deepseek-ai/DeepSeek-V3.1",
+    "Qwen/Qwen3-Coder-480B-A35B-Instruct",
   ],
   WEB_SEARCH: [
-    "nvidia/Llama-4-Scout-17B-16E-Instruct-FP8",
-    "nvidia/Llama-4-Maverick-17B-128E-Instruct-FP8",
+    "tiiuae/falcon-180B",
+    "deepseek-ai/DeepSeek-V3.1",
+    "Qwen/Qwen3-Coder-480B-A35B-Instruct",
   ],
 };
 
