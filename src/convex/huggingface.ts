@@ -5,41 +5,41 @@ import { v } from "convex/values";
 const HF_TOKEN = process.env.HUGGINGFACE_TOKEN || "";
 const HF_API_BASE = "https://api-inference.huggingface.co/models";
 
-// Model endpoints organized by task type - using specified Hugging Face repositories
+// Model endpoints organized by task type - using verified publicly accessible models
 export const MODELS = {
   CODING: [
-    "deepseek-ai/DeepSeek-V3.1",
-    "Qwen/Qwen3-Coder-480B-A35B-Instruct",
+    "bigcode/starcoder",
+    "Salesforce/codegen-350M-mono",
   ],
   THINKING: [
-    "mistralai/Mistral-7B-Instruct-v0.3",
-    "google/flan-t5-xxl",
+    "mistralai/Mistral-7B-Instruct-v0.2",
+    "google/flan-t5-large",
     "tiiuae/falcon-7b-instruct",
   ],
   GENERATIVE: [
-    "mistralai/Mistral-7B-Instruct-v0.3",
-    "google/flan-t5-xxl",
-    "deepseek-ai/DeepSeek-V3.1",
+    "mistralai/Mistral-7B-Instruct-v0.2",
+    "google/flan-t5-large",
+    "gpt2",
   ],
   CODE_ANALYSIS: [
-    "Qwen/Qwen3-Coder-480B-A35B-Instruct",
-    "deepseek-ai/DeepSeek-V3.1",
-    "mistralai/Mistral-7B-Instruct-v0.3",
+    "bigcode/starcoder",
+    "Salesforce/codegen-350M-mono",
+    "mistralai/Mistral-7B-Instruct-v0.2",
   ],
   PLANNING: [
-    "mistralai/Mistral-7B-Instruct-v0.3",
-    "google/flan-t5-xxl",
-    "Qwen/Qwen3-Coder-480B-A35B-Instruct",
+    "mistralai/Mistral-7B-Instruct-v0.2",
+    "google/flan-t5-large",
+    "tiiuae/falcon-7b-instruct",
   ],
   CREATIVITY: [
-    "mistralai/Mixtral-8x22B-v0.1",
-    "deepseek-ai/DeepSeek-V3.1",
-    "Qwen/Qwen3-Coder-480B-A35B-Instruct",
+    "mistralai/Mistral-7B-Instruct-v0.2",
+    "gpt2-large",
+    "EleutherAI/gpt-neo-1.3B",
   ],
   WEB_SEARCH: [
-    "mistralai/Mistral-7B-Instruct-v0.3",
-    "google/flan-t5-xxl",
-    "Qwen/Qwen3-Coder-480B-A35B-Instruct",
+    "mistralai/Mistral-7B-Instruct-v0.2",
+    "google/flan-t5-large",
+    "tiiuae/falcon-7b-instruct",
   ],
 };
 
