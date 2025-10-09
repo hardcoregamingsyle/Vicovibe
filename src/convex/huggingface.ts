@@ -12,8 +12,8 @@ export const MODELS = {
     "Qwen/Qwen3-Coder-480B-A35B-Instruct",
   ],
   THINKING: [
-    "deepseek/DeepSeek-R1-0528",
-    "openai/gpt-oss-120b",
+    "deepseek-ai/DeepSeek-R1-0528",
+    "mistralai/Mistral-7B-Instruct-v0.2",
     "databricks/dbrx-instruct",
   ],
   GENERATIVE: [
