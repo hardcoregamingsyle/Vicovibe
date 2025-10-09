@@ -12,25 +12,24 @@ export const MODELS = {
     "Qwen/Qwen3-Coder-480B-A35B-Instruct",
   ],
   THINKING: [
-    "deepseek-ai/DeepSeek-R1-0528",
-    "mistralai/Mistral-7B-Instruct-v0.2",
-    "databricks/dbrx-instruct",
+    "mistralai/Mistral-7B-Instruct-v0.3",
+    "google/flan-t5-xxl",
+    "tiiuae/falcon-7b-instruct",
   ],
   GENERATIVE: [
-    "bigscience/bloom",
-    "nvidia/Llama-4-Maverick-17B-128E-Instruct-FP8",
+    "mistralai/Mistral-7B-Instruct-v0.3",
+    "google/flan-t5-xxl",
     "deepseek-ai/DeepSeek-V3.1",
   ],
   CODE_ANALYSIS: [
     "Qwen/Qwen3-Coder-480B-A35B-Instruct",
-    "nvidia/Llama-4-Maverick-17B-128E-Instruct-FP8",
     "deepseek-ai/DeepSeek-V3.1",
+    "mistralai/Mistral-7B-Instruct-v0.3",
   ],
   PLANNING: [
-    "nvidia/Llama-3.1-405B-Instruct-FP8",
-    "databricks/dbrx-instruct",
+    "mistralai/Mistral-7B-Instruct-v0.3",
+    "google/flan-t5-xxl",
     "Qwen/Qwen3-Coder-480B-A35B-Instruct",
-    "nvidia/Llama-4-Scout-17B-16E-Instruct-FP8",
   ],
   CREATIVITY: [
     "mistralai/Mixtral-8x22B-v0.1",
@@ -38,8 +37,8 @@ export const MODELS = {
     "Qwen/Qwen3-Coder-480B-A35B-Instruct",
   ],
   WEB_SEARCH: [
-    "tiiuae/falcon-180B",
-    "deepseek-ai/DeepSeek-V3.1",
+    "mistralai/Mistral-7B-Instruct-v0.3",
+    "google/flan-t5-xxl",
     "Qwen/Qwen3-Coder-480B-A35B-Instruct",
   ],
 };
