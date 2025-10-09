@@ -41,12 +41,9 @@ export const orchestrateAI = action({
         optimizedPrompt = await optimizePrompt(args.prompt, context);
         console.log("✅ [Stage 3] Prompt optimized");
       } catch (error) {
-        console.error("❌ [Stage 3] Prompt optimization failed:", error);
-        await ctx.runMutation(internal.chat.addAssistantMessage, {
-          projectId: args.projectId,
-          message: "⚠️ All AI models are currently unavailable. Please wait for our message on Discord.",
-        });
-        return { ok: false, error: "Prompt optimization failed - all models unavailable" };
+        console.error("⚠️ [Stage 3] Prompt optimization failed, using original prompt:", error);
+        // Not critical - use original prompt
+        optimizedPrompt = args.prompt;
       }
       
       // Stage 4: Create Plan
@@ -56,12 +53,9 @@ export const orchestrateAI = action({
         plan = await createPlan(optimizedPrompt, taskTypes);
         console.log("✅ [Stage 4] Plan created:", plan);
       } catch (error) {
-        console.error("❌ [Stage 4] Planning failed:", error);
-        await ctx.runMutation(internal.chat.addAssistantMessage, {
-          projectId: args.projectId,
-          message: "⚠️ All AI models are currently unavailable. Please wait for our message on Discord.",
-        });
-        return { ok: false, error: "Planning failed - all models unavailable" };
+        console.error("⚠️ [Stage 4] Planning failed, using simplified plan:", error);
+        // Not critical - create a simple plan
+        plan = `Execute the following task: ${optimizedPrompt}`;
       }
       
       // If task is planning, return plan and stop
@@ -75,8 +69,15 @@ export const orchestrateAI = action({
       
       // Stage 5: Break Task into Chunks
       console.log("🔨 [Stage 5] Breaking task into chunks...");
-      const chunks = await breakTask(optimizedPrompt, plan);
-      console.log("✅ [Stage 5] Task broken into", chunks.length, "chunks");
+      let chunks: string[];
+      try {
+        chunks = await breakTask(optimizedPrompt, plan);
+        console.log("✅ [Stage 5] Task broken into", chunks.length, "chunks");
+      } catch (error) {
+        console.error("⚠️ [Stage 5] Task breaking failed, using single chunk:", error);
+        // Not critical - use the whole prompt as a single chunk
+        chunks = [optimizedPrompt];
+      }
       
       // Stage 6: Execute Chunks
       console.log("⚡ [Stage 6] Executing chunks...");
@@ -91,7 +92,7 @@ export const orchestrateAI = action({
           memory += `\n\nPrevious chunk result:\n${chunkResult}`;
         } catch (error) {
           console.error(`⚠️ [Stage 6.${i + 1}] Chunk execution failed:`, error);
-          // Check if this is a required category for the task
+          // Check if this is the primary task type
           const primaryTaskType = taskTypes[0];
           if (error instanceof Error && error.message.includes(`category ${primaryTaskType}`)) {
             // Primary task category failed - this is critical

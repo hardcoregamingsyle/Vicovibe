@@ -8,38 +8,39 @@ const HF_API_BASE = "https://api-inference.huggingface.co/models";
 // Model endpoints organized by task type - using verified publicly accessible models
 export const MODELS = {
   CODING: [
-    "bigcode/starcoder",
-    "Salesforce/codegen-350M-mono",
+    "deepseek-ai/DeepSeek-V3.1",
+    "Qwen/Qwen3-Coder-480B-A35B-Instruct",
   ],
   THINKING: [
-    "mistralai/Mistral-7B-Instruct-v0.2",
-    "google/flan-t5-large",
-    "tiiuae/falcon-7b-instruct",
+    "deepseek-ai/DeepSeek-R1-0528",
+    "openai/gpt-oss-120b",
+    "databricks/dbrx-instruct",
   ],
   GENERATIVE: [
-    "mistralai/Mistral-7B-Instruct-v0.2",
-    "google/flan-t5-large",
-    "gpt2",
+    "bigscience/bloom",
+    "nvidia/Llama-4-Maverick-17B-128E-Instruct-FP8",
+    "deepseek-ai/DeepSeek-V3.1",
   ],
   CODE_ANALYSIS: [
-    "bigcode/starcoder",
-    "Salesforce/codegen-350M-mono",
-    "mistralai/Mistral-7B-Instruct-v0.2",
+    "Qwen/Qwen3-Coder-480B-A35B-Instruct",
+    "nvidia/Llama-4-Maverick-17B-128E-Instruct-FP8",
+    "deepseek-ai/DeepSeek-V3.1",
   ],
   PLANNING: [
-    "mistralai/Mistral-7B-Instruct-v0.2",
-    "google/flan-t5-large",
-    "tiiuae/falcon-7b-instruct",
+    "nvidia/Llama-3.1-405B-Instruct-FP8",
+    "databricks/dbrx-instruct",
+    "Qwen/Qwen3-Coder-480B-A35B-Instruct",
+    "nvidia/Llama-4-Scout-17B-16E-Instruct-FP8",
   ],
   CREATIVITY: [
-    "mistralai/Mistral-7B-Instruct-v0.2",
-    "gpt2-large",
-    "EleutherAI/gpt-neo-1.3B",
+    "mistralai/Mixtral-8x22B-v0.1",
+    "deepseek-ai/DeepSeek-V3.1",
+    "Qwen/Qwen3-Coder-480B-A35B-Instruct",
   ],
   WEB_SEARCH: [
-    "mistralai/Mistral-7B-Instruct-v0.2",
-    "google/flan-t5-large",
-    "tiiuae/falcon-7b-instruct",
+    "tiiuae/falcon-180B",
+    "deepseek-ai/DeepSeek-V3.1",
+    "Qwen/Qwen3-Coder-480B-A35B-Instruct",
   ],
 };
 
@@ -120,6 +121,7 @@ export async function callModelsByType(
   options?: { maxTokens?: number; temperature?: number }
 ): Promise<string> {
   const models = MODELS[taskType as keyof typeof MODELS] || MODELS.THINKING;
+  const allModelCategories = Object.keys(MODELS);
   
   // Try each model in the category until one succeeds
   for (let i = 0; i < models.length; i++) {
@@ -134,13 +136,35 @@ export async function callModelsByType(
       return result;
     } catch (error) {
       console.error(`⚠️ [HF] Model ${models[i]} failed, trying next model...`);
-      // Continue to next model
-      if (i === models.length - 1) {
-        // All models in this category failed
-        throw new Error(`All models in category ${taskType} failed`);
+      // Continue to next model in the same category
+    }
+  }
+  
+  // If all models in the primary category failed and this is a CODING task, try fallback to any available model
+  if (taskType === "CODING") {
+    console.log(`⚠️ [HF] All CODING models failed, attempting fallback to other categories...`);
+    for (const category of allModelCategories) {
+      if (category === "CODING") continue; // Skip the category we already tried
+      
+      const fallbackModels = MODELS[category as keyof typeof MODELS];
+      for (let i = 0; i < fallbackModels.length; i++) {
+        try {
+          console.log(`🔄 [HF] Fallback: Trying ${fallbackModels[i]} from ${category}`);
+          const result = await callHuggingFaceModel({
+            model: fallbackModels[i],
+            prompt,
+            ...options,
+          });
+          console.log(`✅ [HF] Fallback successful with ${fallbackModels[i]}`);
+          return result;
+        } catch (error) {
+          console.error(`⚠️ [HF] Fallback model ${fallbackModels[i]} failed`);
+          // Continue to next fallback model
+        }
       }
     }
   }
   
+  // All models in this category failed (and fallback failed for CODING tasks)
   throw new Error(`All models in category ${taskType} failed`);
 }
