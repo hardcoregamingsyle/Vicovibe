@@ -8,34 +8,34 @@ const HF_API_BASE = "https://api-inference.huggingface.co/models";
 // Model endpoints organized by task type - using verified, publicly accessible models
 export const MODELS = {
   CODING: [
-    "bigcode/starcoder2-15b",
-    "Salesforce/codegen-16B-mono",
+    "nvidia/Llama-4-Maverick-17B-128E-Instruct-FP8",
+    "nvidia/Llama-4-Scout-17B-16E-Instruct-FP8",
   ],
   THINKING: [
-    "meta-llama/Meta-Llama-3-8B-Instruct",
-    "mistralai/Mistral-7B-Instruct-v0.2",
+    "nvidia/Llama-3.1-405B-Instruct-FP8",
+    "nvidia/Llama-4-Maverick-17B-128E-Instruct-FP8",
   ],
   GENERATIVE: [
-    "mistralai/Mistral-7B-Instruct-v0.2",
-    "meta-llama/Meta-Llama-3-8B-Instruct",
-    "google/flan-t5-xxl",
+    "nvidia/Llama-4-Maverick-17B-128E-Instruct-FP8",
+    "nvidia/Llama-3.1-405B-Instruct-FP8",
+    "nvidia/Llama-4-Scout-17B-16E-Instruct-FP8",
   ],
   CODE_ANALYSIS: [
-    "bigcode/starcoder2-15b",
-    "Salesforce/codegen-16B-mono",
+    "nvidia/Llama-4-Maverick-17B-128E-Instruct-FP8",
+    "nvidia/Llama-4-Scout-17B-16E-Instruct-FP8",
   ],
   PLANNING: [
-    "meta-llama/Meta-Llama-3-8B-Instruct",
-    "mistralai/Mistral-7B-Instruct-v0.2",
-    "google/flan-t5-xxl",
+    "nvidia/Llama-3.1-405B-Instruct-FP8",
+    "nvidia/Llama-4-Maverick-17B-128E-Instruct-FP8",
+    "nvidia/Llama-4-Scout-17B-16E-Instruct-FP8",
   ],
   CREATIVITY: [
-    "mistralai/Mistral-7B-Instruct-v0.2",
-    "meta-llama/Meta-Llama-3-8B-Instruct",
+    "nvidia/Llama-4-Maverick-17B-128E-Instruct-FP8",
+    "nvidia/Llama-3.1-405B-Instruct-FP8",
   ],
   WEB_SEARCH: [
-    "google/flan-t5-xxl",
-    "mistralai/Mistral-7B-Instruct-v0.2",
+    "nvidia/Llama-4-Scout-17B-16E-Instruct-FP8",
+    "nvidia/Llama-4-Maverick-17B-128E-Instruct-FP8",
   ],
 };
 
