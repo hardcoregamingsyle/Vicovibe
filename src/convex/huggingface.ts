@@ -53,7 +53,7 @@ interface HFCallOptions {
 }
 
 export async function callHuggingFaceModel(options: HFCallOptions): Promise<string> {
-  const { model, prompt, maxTokens = 2048, temperature = 0.7, retries = 3 } = options;
+  const { model, prompt, maxTokens = 2048, temperature = 0.7, retries = 2 } = options;
   
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
@@ -104,7 +104,7 @@ export async function callHuggingFaceModel(options: HFCallOptions): Promise<stri
       return JSON.stringify(data);
       
     } catch (error) {
-      console.error(`❌ [HF] Attempt ${attempt + 1} failed:`, error);
+      console.error(`❌ [HF] Attempt ${attempt + 1} failed for ${model}:`, error);
       if (attempt === retries - 1) {
         throw error;
       }
@@ -122,25 +122,26 @@ export async function callModelsByType(
 ): Promise<string> {
   const models = MODELS[taskType as keyof typeof MODELS] || MODELS.THINKING;
   
-  // Try primary model first
-  try {
-    return await callHuggingFaceModel({
-      model: models[0],
-      prompt,
-      ...options,
-    });
-  } catch (error) {
-    console.error(`❌ [HF] Primary model failed, trying fallback`);
-    
-    // Try fallback model
-    if (models.length > 1) {
-      return await callHuggingFaceModel({
-        model: models[1],
+  // Try each model in the category until one succeeds
+  for (let i = 0; i < models.length; i++) {
+    try {
+      console.log(`🔄 [HF] Trying model ${i + 1}/${models.length} for ${taskType}: ${models[i]}`);
+      const result = await callHuggingFaceModel({
+        model: models[i],
         prompt,
         ...options,
       });
+      console.log(`✅ [HF] Successfully used ${models[i]} for ${taskType}`);
+      return result;
+    } catch (error) {
+      console.error(`⚠️ [HF] Model ${models[i]} failed, trying next model...`);
+      // Continue to next model
+      if (i === models.length - 1) {
+        // All models in this category failed
+        throw new Error(`All models in category ${taskType} failed`);
+      }
     }
-    
-    throw error;
   }
+  
+  throw new Error(`All models in category ${taskType} failed`);
 }

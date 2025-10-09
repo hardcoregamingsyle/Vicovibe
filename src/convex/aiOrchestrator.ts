@@ -16,8 +16,18 @@ export const orchestrateAI = action({
     try {
       // Stage 1: Classify Task
       console.log("📋 [Stage 1] Classifying task...");
-      const taskTypes = await classifyTask(args.prompt);
-      console.log("✅ [Stage 1] Task types:", taskTypes);
+      let taskTypes: string[];
+      try {
+        taskTypes = await classifyTask(args.prompt);
+        console.log("✅ [Stage 1] Task types:", taskTypes);
+      } catch (error) {
+        console.error("❌ [Stage 1] Task classification failed:", error);
+        await ctx.runMutation(internal.chat.addAssistantMessage, {
+          projectId: args.projectId,
+          message: "⚠️ All AI models are currently unavailable. Please wait for our message on Discord.",
+        });
+        return { ok: false, error: "Task classification failed - all models unavailable" };
+      }
       
       // Stage 2: Inject Context
       console.log("📚 [Stage 2] Injecting context...");
@@ -26,13 +36,33 @@ export const orchestrateAI = action({
       
       // Stage 3: Optimize Prompt
       console.log("✨ [Stage 3] Optimizing prompt...");
-      const optimizedPrompt = await optimizePrompt(args.prompt, context);
-      console.log("✅ [Stage 3] Prompt optimized");
+      let optimizedPrompt: string;
+      try {
+        optimizedPrompt = await optimizePrompt(args.prompt, context);
+        console.log("✅ [Stage 3] Prompt optimized");
+      } catch (error) {
+        console.error("❌ [Stage 3] Prompt optimization failed:", error);
+        await ctx.runMutation(internal.chat.addAssistantMessage, {
+          projectId: args.projectId,
+          message: "⚠️ All AI models are currently unavailable. Please wait for our message on Discord.",
+        });
+        return { ok: false, error: "Prompt optimization failed - all models unavailable" };
+      }
       
       // Stage 4: Create Plan
       console.log("🗺️ [Stage 4] Creating execution plan...");
-      const plan = await createPlan(optimizedPrompt, taskTypes);
-      console.log("✅ [Stage 4] Plan created:", plan);
+      let plan: string;
+      try {
+        plan = await createPlan(optimizedPrompt, taskTypes);
+        console.log("✅ [Stage 4] Plan created:", plan);
+      } catch (error) {
+        console.error("❌ [Stage 4] Planning failed:", error);
+        await ctx.runMutation(internal.chat.addAssistantMessage, {
+          projectId: args.projectId,
+          message: "⚠️ All AI models are currently unavailable. Please wait for our message on Discord.",
+        });
+        return { ok: false, error: "Planning failed - all models unavailable" };
+      }
       
       // If task is planning, return plan and stop
       if (taskTypes.includes("PLANNING") && taskTypes.length === 1) {
@@ -55,9 +85,25 @@ export const orchestrateAI = action({
       
       for (let i = 0; i < chunks.length; i++) {
         console.log(`🔄 [Stage 6.${i + 1}] Processing chunk ${i + 1}/${chunks.length}`);
-        const chunkResult = await executeChunk(chunks[i], taskTypes, memory);
-        results.push(chunkResult);
-        memory += `\n\nPrevious chunk result:\n${chunkResult}`;
+        try {
+          const chunkResult = await executeChunk(chunks[i], taskTypes, memory);
+          results.push(chunkResult);
+          memory += `\n\nPrevious chunk result:\n${chunkResult}`;
+        } catch (error) {
+          console.error(`⚠️ [Stage 6.${i + 1}] Chunk execution failed:`, error);
+          // Check if this is a required category for the task
+          const primaryTaskType = taskTypes[0];
+          if (error instanceof Error && error.message.includes(`category ${primaryTaskType}`)) {
+            // Primary task category failed - this is critical
+            await ctx.runMutation(internal.chat.addAssistantMessage, {
+              projectId: args.projectId,
+              message: "⚠️ All AI models are currently unavailable. Please wait for our message on Discord.",
+            });
+            return { ok: false, error: "Primary task category failed - all models unavailable" };
+          }
+          // Non-critical category failed, continue with what we have
+          console.log(`⚠️ [Stage 6.${i + 1}] Skipping failed chunk, continuing...`);
+        }
       }
       
       let finalResult = results.join("\n\n");
@@ -65,15 +111,25 @@ export const orchestrateAI = action({
       // Stage 7: Code Analysis & Refinement (for coding tasks)
       if (taskTypes.includes("CODING")) {
         console.log("🔍 [Stage 7] Analyzing and refining code...");
-        finalResult = await analyzeAndRefineCode(finalResult, context);
-        console.log("✅ [Stage 7] Code refined");
+        try {
+          finalResult = await analyzeAndRefineCode(finalResult, context);
+          console.log("✅ [Stage 7] Code refined");
+        } catch (error) {
+          console.error("⚠️ [Stage 7] Code analysis failed, using unrefined code:", error);
+          // Not critical - continue with unrefined code
+        }
       }
       
       // Stage 8: Web Search Integration (for search tasks)
       if (taskTypes.includes("WEB_SEARCH")) {
         console.log("🌐 [Stage 8] Performing web search...");
-        finalResult = await searchWeb(args.prompt, finalResult);
-        console.log("✅ [Stage 8] Web search completed");
+        try {
+          finalResult = await searchWeb(args.prompt, finalResult);
+          console.log("✅ [Stage 8] Web search completed");
+        } catch (error) {
+          console.error("⚠️ [Stage 8] Web search failed, using existing result:", error);
+          // Not critical - continue with existing result
+        }
       }
       
       // Store final result
@@ -218,13 +274,14 @@ Provide a detailed solution:`;
 }
 
 async function analyzeAndRefineCode(code: string, context: string): Promise<string> {
-  const maxIterations = 3;
+  const maxIterations = 2;
   let refinedCode = code;
   
   for (let i = 0; i < maxIterations; i++) {
     console.log(`🔄 [Code Analysis] Iteration ${i + 1}/${maxIterations}`);
     
-    const analysisPrompt = `Analyze this code and suggest improvements. Focus on correctness, efficiency, and best practices.
+    try {
+      const analysisPrompt = `Analyze this code and suggest improvements. Focus on correctness, efficiency, and best practices.
 
 Context:
 ${context}
@@ -234,18 +291,22 @@ ${refinedCode}
 
 Analysis and improved code:`;
 
-    const analysis = await callModelsByType("CODE_ANALYSIS", analysisPrompt, {
-      maxTokens: 2048,
-      temperature: 0.4,
-    });
-    
-    // If analysis suggests no changes, we're done
-    if (analysis.toLowerCase().includes("no changes needed") || 
-        analysis.toLowerCase().includes("looks good")) {
+      const analysis = await callModelsByType("CODE_ANALYSIS", analysisPrompt, {
+        maxTokens: 2048,
+        temperature: 0.4,
+      });
+      
+      // If analysis suggests no changes, we're done
+      if (analysis.toLowerCase().includes("no changes needed") || 
+          analysis.toLowerCase().includes("looks good")) {
+        break;
+      }
+      
+      refinedCode = analysis;
+    } catch (error) {
+      console.error(`⚠️ [Code Analysis] Iteration ${i + 1} failed:`, error);
       break;
     }
-    
-    refinedCode = analysis;
   }
   
   return refinedCode;
