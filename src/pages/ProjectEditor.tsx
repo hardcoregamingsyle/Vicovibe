@@ -6,7 +6,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { api } from "@/convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import { motion } from "framer-motion";
-import { ArrowLeft, Loader2, Send, Code2, Eye, Menu, Github, GitBranch, RefreshCw } from "lucide-react";
+import { ArrowLeft, Loader2, Send, Code2, Eye, Menu, Github, GitBranch, RefreshCw, Sparkles, Brain, FileCode, Search, Lightbulb } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useMutation, useQuery, useAction } from "convex/react";
@@ -440,6 +440,7 @@ export default function ProjectEditor() {
               <div className="text-center text-muted-foreground py-8">
                 <Code2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>Start chatting to build your project with AI</p>
+                <p className="text-xs mt-2">Powered by multi-model AI orchestration</p>
               </div>
             )}
             {chatMessages?.map((msg) => (
@@ -456,7 +457,32 @@ export default function ProjectEditor() {
                       : "bg-card"
                   }`}
                 >
+                  {msg.role === "assistant" && (msg as any).metadata?.processingStage && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                      <Sparkles className="h-3 w-3" />
+                      <span>Stage: {(msg as any).metadata.processingStage}</span>
+                      {(msg as any).metadata?.iterationCount && (
+                        <span>• Iteration {(msg as any).metadata.iterationCount}</span>
+                      )}
+                    </div>
+                  )}
                   <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                  {msg.role === "assistant" && (msg as any).metadata?.taskTypes && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {(msg as any).metadata.taskTypes.map((type: string) => (
+                        <span
+                          key={type}
+                          className="text-xs px-2 py-1 rounded bg-primary/10 flex items-center gap-1"
+                        >
+                          {type === "CODING" && <FileCode className="h-3 w-3" />}
+                          {type === "THINKING" && <Brain className="h-3 w-3" />}
+                          {type === "WEB_SEARCH" && <Search className="h-3 w-3" />}
+                          {type === "CREATIVITY" && <Lightbulb className="h-3 w-3" />}
+                          {type}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </Card>
               </motion.div>
             ))}

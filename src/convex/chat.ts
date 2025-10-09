@@ -1,7 +1,7 @@
 // src/convex/chat.ts
 import { v } from "convex/values";
 import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
-import { api } from "./_generated/api";
+import { internal } from "./_generated/api";
 
 export const list = query({
   args: { projectId: v.id("projects") },
@@ -31,8 +31,8 @@ export const send = mutation({
       message: args.message
     });
 
-    // Trigger AI action asynchronously (non-blocking)
-    await ctx.scheduler.runAfter(0, api.ai.generateAIResponse, {
+    // Trigger NEW AI orchestrator (multi-stage pipeline)
+    await ctx.scheduler.runAfter(0, (internal as any).aiOrchestrator.orchestrateAI, {
       projectId: args.projectId,
       prompt: args.message
     });

@@ -71,6 +71,11 @@ const schema = defineSchema(
       userId: v.id("users"),
       role: v.union(v.literal("user"), v.literal("assistant")),
       message: v.string(),
+      metadata: v.optional(v.object({
+        taskTypes: v.optional(v.array(v.string())),
+        processingStage: v.optional(v.string()),
+        iterationCount: v.optional(v.number()),
+      })),
     })
       .index("by_project", ["projectId"]),
 

@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query, internalMutation } from "./_generated/server";
+import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { getCurrentUser } from "./users";
 
 export const list = query({
@@ -83,5 +83,15 @@ export const upsertInternal = internalMutation({
         lastModified: Date.now(),
       });
     }
+  },
+});
+
+export const listInternal = internalQuery({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("projectFiles")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
   },
 });
