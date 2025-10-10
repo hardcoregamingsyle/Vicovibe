@@ -4,27 +4,29 @@ import { v } from "convex/values";
 
 const HF_TOKEN = process.env.HUGGINGFACE_TOKEN || "";
 const HF_API_BASE = "https://api-inference.huggingface.co/models";
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API || "";
+const OPENROUTER_API_BASE = "https://openrouter.ai/api/v1/chat/completions";
 
 // Model endpoints organized by task type - using verified publicly accessible models
 export const MODELS = {
   CODING: [
-    "deepseek-ai/DeepSeek-V3.1",
+    "openrouter:deepseek/deepseek-chat-v3.1:free",
     "Qwen/Qwen3-Coder-480B-A35B-Instruct",
   ],
   THINKING: [
-    "deepseek-ai/DeepSeek-R1-0528",
+    "openrouter:deepseek/deepseek-chat-v3.1:free",
     "openai/gpt-oss-120b",
     "databricks/dbrx-instruct",
   ],
   GENERATIVE: [
     "bigscience/bloom",
     "nvidia/Llama-4-Maverick-17B-128E-Instruct-FP8",
-    "deepseek-ai/DeepSeek-V3.1",
+    "openrouter:deepseek/deepseek-chat-v3.1:free",
   ],
   CODE_ANALYSIS: [
     "Qwen/Qwen3-Coder-480B-A35B-Instruct",
     "nvidia/Llama-4-Maverick-17B-128E-Instruct-FP8",
-    "deepseek-ai/DeepSeek-V3.1",
+    "openrouter:deepseek/deepseek-chat-v3.1:free",
   ],
   PLANNING: [
     "nvidia/Llama-3.1-405B-Instruct-FP8",
@@ -34,12 +36,12 @@ export const MODELS = {
   ],
   CREATIVITY: [
     "mistralai/Mixtral-8x22B-v0.1",
-    "deepseek-ai/DeepSeek-V3.1",
+    "openrouter:deepseek/deepseek-chat-v3.1:free",
     "Qwen/Qwen3-Coder-480B-A35B-Instruct",
   ],
   WEB_SEARCH: [
     "tiiuae/falcon-180B",
-    "deepseek-ai/DeepSeek-V3.1",
+    "openrouter:deepseek/deepseek-chat-v3.1:free",
     "Qwen/Qwen3-Coder-480B-A35B-Instruct",
   ],
 };
@@ -52,8 +54,76 @@ interface HFCallOptions {
   retries?: number;
 }
 
+async function callOpenRouter(options: HFCallOptions): Promise<string> {
+  const { model, prompt, maxTokens = 2048, temperature = 0.7, retries = 2 } = options;
+  const modelName = model.replace("openrouter:", "");
+  
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      console.log(`🤖 [OpenRouter] Calling ${modelName} (attempt ${attempt + 1}/${retries})`);
+      
+      const response = await fetch(OPENROUTER_API_BASE, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://vicovibe.com",
+          "X-Title": "AI Vibe Coder",
+        },
+        body: JSON.stringify({
+          model: modelName,
+          messages: [
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          max_tokens: maxTokens,
+          temperature: temperature,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ [OpenRouter] Error from ${modelName}:`, errorText);
+        
+        if (response.status === 503 && attempt < retries - 1) {
+          console.log(`⏳ [OpenRouter] Service unavailable, waiting 10s...`);
+          await new Promise(resolve => setTimeout(resolve, 10000));
+          continue;
+        }
+        
+        throw new Error(`OpenRouter API error (${response.status}): ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log(`✅ [OpenRouter] Success from ${modelName}`);
+      
+      if (data.choices && data.choices[0]?.message?.content) {
+        return data.choices[0].message.content;
+      }
+      
+      return JSON.stringify(data);
+      
+    } catch (error) {
+      console.error(`❌ [OpenRouter] Attempt ${attempt + 1} failed for ${modelName}:`, error);
+      if (attempt === retries - 1) {
+        throw error;
+      }
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
+  
+  throw new Error(`Failed to call ${modelName} after ${retries} attempts`);
+}
+
 export async function callHuggingFaceModel(options: HFCallOptions): Promise<string> {
   const { model, prompt, maxTokens = 2048, temperature = 0.7, retries = 2 } = options;
+  
+  // Check if this is an OpenRouter model
+  if (model.startsWith("openrouter:")) {
+    return await callOpenRouter(options);
+  }
   
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
