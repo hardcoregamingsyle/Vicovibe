@@ -85,6 +85,9 @@ export async function callHuggingFaceModel(options: HFCallOptions): Promise<stri
           await new Promise(resolve => setTimeout(resolve, 10000));
           continue;
         }
+        if (response.status === 404) {
+          throw new Error(`Model not found on Hugging Face: ${model}`);
+        }        
         
         throw new Error(`HF API error (${response.status}): ${errorText}`);
       }
