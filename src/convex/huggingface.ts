@@ -10,39 +10,38 @@ const OPENROUTER_API_BASE = "https://openrouter.ai/api/v1/chat/completions";
 // Model endpoints organized by task type - using verified publicly accessible models
 export const MODELS = {
   CODING: [
+    "openrouter:qwen/qwen3-coder:free",
     "openrouter:deepseek/deepseek-chat-v3.1:free",
-    "Qwen/Qwen3-Coder-480B-A35B-Instruct",
   ],
   THINKING: [
-    "openrouter:deepseek/deepseek-chat-v3.1:free",
-    "openai/gpt-oss-120b",
-    "databricks/dbrx-instruct",
+    "openrouter:deepseek/deepseek-r1-0528:free",
+    "openrouter:openai/gpt-oss-20b:free",
+    "openrouter:meta-llama/llama-3.3-70b-instruct:free",
   ],
   GENERATIVE: [
-    "bigscience/bloom",
-    "nvidia/Llama-4-Maverick-17B-128E-Instruct-FP8",
+    "openrouter:google/gemma-3n-e2b-it:free",
+    "openrouter:meta-llama/llama-4-maverick:free",
     "openrouter:deepseek/deepseek-chat-v3.1:free",
   ],
   CODE_ANALYSIS: [
-    "Qwen/Qwen3-Coder-480B-A35B-Instruct",
-    "nvidia/Llama-4-Maverick-17B-128E-Instruct-FP8",
+    "openrouter:qwen/qwen3-coder:free",
+    "openrouter:meta-llama/llama-4-maverick:free",
     "openrouter:deepseek/deepseek-chat-v3.1:free",
   ],
   PLANNING: [
-    "nvidia/Llama-3.1-405B-Instruct-FP8",
-    "databricks/dbrx-instruct",
-    "Qwen/Qwen3-Coder-480B-A35B-Instruct",
-    "nvidia/Llama-4-Scout-17B-16E-Instruct-FP8",
+    "openrouter:meta-llama/llama-3.3-70b-instruct:free",
+    "openrouter:meta-llama/llama-4-scout:free",
+    "openrouter:qwen/qwen3-coder:free",
   ],
   CREATIVITY: [
-    "mistralai/Mixtral-8x22B-v0.1",
+    "openrouter:mistralai/mistral-7b-instruct:free",
     "openrouter:deepseek/deepseek-chat-v3.1:free",
-    "Qwen/Qwen3-Coder-480B-A35B-Instruct",
+    "openrouter:nvidia/nemotron-nano-9b-v2:free",
   ],
   WEB_SEARCH: [
-    "tiiuae/falcon-180B",
+    "openrouter:nvidia/nemotron-nano-9b-v2:free",
     "openrouter:deepseek/deepseek-chat-v3.1:free",
-    "Qwen/Qwen3-Coder-480B-A35B-Instruct",
+    "openrouter:qwen/qwen3-coder:free",
   ],
 };
 
