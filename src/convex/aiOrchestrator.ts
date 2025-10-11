@@ -1,11 +1,11 @@
 "use node";
 
-import { action } from "./_generated/server";
+import { internalAction } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { callModelsByType, callHuggingFaceModel } from "./huggingface";
+import { callModelsByType } from "./huggingface";
 
-export const orchestrateAI = action({
+export const orchestrateAI = internalAction({
   args: {
     projectId: v.id("projects"),
     prompt: v.string(),
@@ -20,11 +20,21 @@ export const orchestrateAI = action({
       try {
         taskTypes = await classifyTask(args.prompt);
         console.log("✅ [Stage 1] Task types:", taskTypes);
+        
+        // Send status update to user
+        await ctx.runMutation(internal.chat.addAssistantMessage, {
+          projectId: args.projectId,
+          message: `🔍 Analyzing your request... (Task type: ${taskTypes.join(", ")})`,
+          metadata: {
+            taskTypes,
+            processingStage: "CLASSIFYING",
+          },
+        });
       } catch (error) {
         console.error("❌ [Stage 1] Task classification failed:", error);
         await ctx.runMutation(internal.chat.addAssistantMessage, {
           projectId: args.projectId,
-          message: "⚠️ All AI models are currently unavailable. Please wait for our message on Discord.",
+          message: `❌ Error: Unable to classify task. ${error instanceof Error ? error.message : String(error)}`,
         });
         return { ok: false, error: "Task classification failed - all models unavailable" };
       }
@@ -42,7 +52,6 @@ export const orchestrateAI = action({
         console.log("✅ [Stage 3] Prompt optimized");
       } catch (error) {
         console.error("⚠️ [Stage 3] Prompt optimization failed, using original prompt:", error);
-        // Not critical - use original prompt
         optimizedPrompt = args.prompt;
       }
       
@@ -54,7 +63,6 @@ export const orchestrateAI = action({
         console.log("✅ [Stage 4] Plan created:", plan);
       } catch (error) {
         console.error("⚠️ [Stage 4] Planning failed, using simplified plan:", error);
-        // Not critical - create a simple plan
         plan = `Execute the following task: ${optimizedPrompt}`;
       }
       
@@ -63,6 +71,10 @@ export const orchestrateAI = action({
         await ctx.runMutation(internal.chat.addAssistantMessage, {
           projectId: args.projectId,
           message: `📋 **Execution Plan:**\n\n${plan}`,
+          metadata: {
+            taskTypes,
+            processingStage: "COMPLETED",
+          },
         });
         return { ok: true, final: plan };
       }
@@ -75,12 +87,22 @@ export const orchestrateAI = action({
         console.log("✅ [Stage 5] Task broken into", chunks.length, "chunks");
       } catch (error) {
         console.error("⚠️ [Stage 5] Task breaking failed, using single chunk:", error);
-        // Not critical - use the whole prompt as a single chunk
         chunks = [optimizedPrompt];
       }
       
       // Stage 6: Execute Chunks
       console.log("⚡ [Stage 6] Executing chunks...");
+      
+      // Send progress update
+      await ctx.runMutation(internal.chat.addAssistantMessage, {
+        projectId: args.projectId,
+        message: `⚙️ Processing ${chunks.length} task${chunks.length > 1 ? 's' : ''}...`,
+        metadata: {
+          taskTypes,
+          processingStage: "EXECUTING",
+        },
+      });
+      
       const results: string[] = [];
       let memory = context;
       
@@ -92,17 +114,14 @@ export const orchestrateAI = action({
           memory += `\n\nPrevious chunk result:\n${chunkResult}`;
         } catch (error) {
           console.error(`⚠️ [Stage 6.${i + 1}] Chunk execution failed:`, error);
-          // Check if this is the primary task type
           const primaryTaskType = taskTypes[0];
           if (error instanceof Error && error.message.includes(`category ${primaryTaskType}`)) {
-            // Primary task category failed - this is critical
             await ctx.runMutation(internal.chat.addAssistantMessage, {
               projectId: args.projectId,
-              message: "⚠️ All AI models are currently unavailable. Please wait for our message on Discord.",
+              message: `❌ Error: Primary task failed. ${error.message}`,
             });
             return { ok: false, error: "Primary task category failed - all models unavailable" };
           }
-          // Non-critical category failed, continue with what we have
           console.log(`⚠️ [Stage 6.${i + 1}] Skipping failed chunk, continuing...`);
         }
       }
@@ -117,7 +136,6 @@ export const orchestrateAI = action({
           console.log("✅ [Stage 7] Code refined");
         } catch (error) {
           console.error("⚠️ [Stage 7] Code analysis failed, using unrefined code:", error);
-          // Not critical - continue with unrefined code
         }
       }
       
@@ -129,7 +147,6 @@ export const orchestrateAI = action({
           console.log("✅ [Stage 8] Web search completed");
         } catch (error) {
           console.error("⚠️ [Stage 8] Web search failed, using existing result:", error);
-          // Not critical - continue with existing result
         }
       }
       
@@ -137,6 +154,10 @@ export const orchestrateAI = action({
       await ctx.runMutation(internal.chat.addAssistantMessage, {
         projectId: args.projectId,
         message: finalResult,
+        metadata: {
+          taskTypes,
+          processingStage: "COMPLETED",
+        },
       });
       
       console.log("🎉 [Orchestrator] Pipeline completed successfully");

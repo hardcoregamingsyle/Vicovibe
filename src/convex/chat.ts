@@ -31,8 +31,8 @@ export const send = mutation({
       message: args.message
     });
 
-    // Trigger NEW AI orchestrator (multi-stage pipeline)
-    await ctx.scheduler.runAfter(0, (internal as any).aiOrchestrator.orchestrateAI, {
+    // Trigger AI orchestrator (multi-stage pipeline)
+    await ctx.scheduler.runAfter(0, internal.aiOrchestrator.orchestrateAI, {
       projectId: args.projectId,
       prompt: args.message
     });
@@ -45,6 +45,11 @@ export const addAssistantMessage = internalMutation({
   args: {
     projectId: v.id("projects"),
     message: v.string(),
+    metadata: v.optional(v.object({
+      taskTypes: v.optional(v.array(v.string())),
+      processingStage: v.optional(v.string()),
+      iterationCount: v.optional(v.number()),
+    })),
   },
   handler: async (ctx, args) => {
     await ctx.db.insert("chatMessages", {
@@ -52,6 +57,7 @@ export const addAssistantMessage = internalMutation({
       userId: null as any,
       role: "assistant",
       message: args.message,
+      metadata: args.metadata,
     });
   },
 });
