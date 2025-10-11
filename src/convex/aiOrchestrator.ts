@@ -14,6 +14,13 @@ export const orchestrateAI = internalAction({
     console.log("🎭 [Orchestrator] Starting AI pipeline for:", args.prompt);
     
     try {
+      // Quick check for simple interactions that don't need full pipeline
+      const simpleResponse = await handleSimpleInteraction(ctx, args.projectId, args.prompt);
+      if (simpleResponse) {
+        console.log("⚡ [Orchestrator] Handled as simple interaction");
+        return { ok: true, final: simpleResponse };
+      }
+      
       // Stage 1: Classify Task
       console.log("📋 [Stage 1] Classifying task...");
       let taskTypes: string[];
@@ -31,7 +38,7 @@ export const orchestrateAI = internalAction({
           },
         });
       } catch (error) {
-        console.error("⚠️ [Stage 1] Task classification failed, using default:", error);
+        console.warn("⚠️ [Stage 1] Task classification failed, using default:", error);
         // Don't fail the entire pipeline - use default task type
         taskTypes = ["THINKING"];
         console.log("✅ [Stage 1] Using default task type: THINKING");
@@ -167,6 +174,65 @@ export const orchestrateAI = internalAction({
     }
   },
 });
+
+async function handleSimpleInteraction(ctx: any, projectId: string, prompt: string): Promise<string | null> {
+  const lowerPrompt = prompt.toLowerCase().trim();
+  
+  // Get user info for personalization
+  let userName = "there";
+  try {
+    const chatHistory = await ctx.runQuery(internal.chat.listInternal, { projectId });
+    const userMessages = chatHistory.filter((m: any) => m.role === "user");
+    // Try to extract name from context if available
+  } catch (error) {
+    console.warn("⚠️ [Simple] Could not fetch user context");
+  }
+  
+  // Greetings
+  const greetings = ["hello", "hi", "hey", "greetings", "good morning", "good afternoon", "good evening"];
+  if (greetings.some(g => lowerPrompt.startsWith(g) || lowerPrompt === g)) {
+    const response = `Hello ${userName}! 👋 I'm Vicovibe, your AI coding assistant. What shall we build today?`;
+    await ctx.runMutation(internal.chat.addAssistantMessage, {
+      projectId,
+      message: response,
+    });
+    return response;
+  }
+  
+  // Help requests
+  if (lowerPrompt.includes("help") && lowerPrompt.split(" ").length < 5) {
+    const response = `I'm here to help you build amazing projects! 🚀\n\nYou can ask me to:\n• Write code in any language\n• Debug and fix errors\n• Explain concepts\n• Create project structures\n• And much more!\n\nWhat would you like to work on?`;
+    await ctx.runMutation(internal.chat.addAssistantMessage, {
+      projectId,
+      message: response,
+    });
+    return response;
+  }
+  
+  // Thank you
+  if (lowerPrompt.includes("thank") || lowerPrompt.includes("thanks")) {
+    const response = `You're welcome! 😊 Happy to help. Let me know if you need anything else!`;
+    await ctx.runMutation(internal.chat.addAssistantMessage, {
+      projectId,
+      message: response,
+    });
+    return response;
+  }
+  
+  // Goodbye
+  const goodbyes = ["bye", "goodbye", "see you", "later"];
+  if (goodbyes.some(g => lowerPrompt.includes(g))) {
+    const response = `Goodbye! 👋 Come back anytime you want to build something awesome!`;
+    await ctx.runMutation(internal.chat.addAssistantMessage, {
+      projectId,
+      message: response,
+    });
+    return response;
+  }
+  
+  // Not a simple interaction, proceed with full pipeline
+  return null;
+}
 
 async function classifyTask(prompt: string): Promise<string[]> {
   const classificationPrompt = `Analyze this user request and classify it into one or more of these categories:
