@@ -11,6 +11,8 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useMutation, useQuery, useAction } from "convex/react";
 import { toast } from "sonner";
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 export default function ProjectEditor() {
   const { slug } = useParams<{ slug: string }>();
@@ -297,6 +299,32 @@ export default function ProjectEditor() {
   const selectedFileContent = selectedFile
     ? projectFiles?.find((f) => f.filePath === selectedFile)?.content
     : null;
+
+  const getLanguageFromFilePath = (filePath: string): string => {
+    const extension = filePath.split('.').pop()?.toLowerCase();
+    switch (extension) {
+      case 'py':
+        return 'python';
+      case 'js':
+        return 'javascript';
+      case 'ts':
+        return 'typescript';
+      case 'jsx':
+        return 'jsx';
+      case 'tsx':
+        return 'tsx';
+      case 'html':
+        return 'html';
+      case 'css':
+        return 'css';
+      case 'json':
+        return 'json';
+      case 'md':
+        return 'markdown';
+      default:
+        return 'text';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background dark flex flex-col">
@@ -676,15 +704,27 @@ export default function ProjectEditor() {
                     />
                   </div>
                 ) : (
-                  <div className="h-full p-4 overflow-y-auto">
+                  <div className="h-full overflow-y-auto">
                     {selectedFile ? (
-                      <div>
-                        <h3 className="font-semibold mb-2">{selectedFile}</h3>
-                        <Textarea
-                          value={selectedFileContent || ""}
-                          readOnly
-                          className="font-mono text-sm min-h-[500px]"
-                        />
+                      <div className="h-full flex flex-col">
+                        <div className="p-4 border-b bg-muted/50">
+                          <h3 className="font-semibold text-sm">{selectedFile}</h3>
+                        </div>
+                        <div className="flex-1 overflow-auto">
+                          <SyntaxHighlighter
+                            language={getLanguageFromFilePath(selectedFile)}
+                            style={vscDarkPlus}
+                            showLineNumbers
+                            customStyle={{
+                              margin: 0,
+                              padding: '1rem',
+                              fontSize: '0.875rem',
+                              minHeight: '100%',
+                            }}
+                          >
+                            {selectedFileContent || ""}
+                          </SyntaxHighlighter>
+                        </div>
                       </div>
                     ) : (
                       <div className="text-center text-muted-foreground py-8">
