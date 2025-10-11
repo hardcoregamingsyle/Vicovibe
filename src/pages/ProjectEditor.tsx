@@ -6,7 +6,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { api } from "@/convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import { motion } from "framer-motion";
-import { ArrowLeft, Loader2, Send, Code2, Eye, Menu, Github, GitBranch, RefreshCw, Sparkles, Brain, FileCode, Search, Lightbulb } from "lucide-react";
+import { ArrowLeft, Loader2, Send, Code2, Eye, Menu, Github, GitBranch, RefreshCw, Sparkles, Brain, FileCode, Search, Lightbulb, ChevronRight, ChevronDown, Folder, File } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useMutation, useQuery, useAction } from "convex/react";
@@ -48,6 +48,7 @@ export default function ProjectEditor() {
   const [isPrivate, setIsPrivate] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -159,6 +160,92 @@ export default function ProjectEditor() {
       setIsLoading(false);
     }
   };
+
+  // Build folder tree structure
+  const buildFileTree = (files: any[]) => {
+    const tree: any = {};
+    
+    files?.forEach((file) => {
+      const parts = file.filePath.split('/');
+      let current = tree;
+      
+      parts.forEach((part: string, index: number) => {
+        if (index === parts.length - 1) {
+          // It's a file
+          if (!current._files) current._files = [];
+          current._files.push({ name: part, fullPath: file.filePath, _id: file._id });
+        } else {
+          // It's a folder
+          if (!current[part]) {
+            current[part] = {};
+          }
+          current = current[part];
+        }
+      });
+    });
+    
+    return tree;
+  };
+
+  const toggleFolder = (path: string) => {
+    setExpandedFolders(prev => {
+      const next = new Set(prev);
+      if (next.has(path)) {
+        next.delete(path);
+      } else {
+        next.add(path);
+      }
+      return next;
+    });
+  };
+
+  const renderFileTree = (node: any, path: string = "", level: number = 0) => {
+    const folders = Object.keys(node).filter(key => key !== '_files');
+    const files = node._files || [];
+    
+    return (
+      <>
+        {folders.map(folderName => {
+          const folderPath = path ? `${path}/${folderName}` : folderName;
+          const isExpanded = expandedFolders.has(folderPath);
+          
+          return (
+            <div key={folderPath}>
+              <button
+                onClick={() => toggleFolder(folderPath)}
+                className="w-full text-left text-sm p-2 rounded hover:bg-accent flex items-center gap-2"
+                style={{ paddingLeft: `${level * 12 + 8}px` }}
+              >
+                {isExpanded ? (
+                  <ChevronDown className="h-4 w-4 shrink-0" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 shrink-0" />
+                )}
+                <Folder className="h-4 w-4 shrink-0 text-yellow-500" />
+                <span>{folderName}</span>
+              </button>
+              {isExpanded && renderFileTree(node[folderName], folderPath, level + 1)}
+            </div>
+          );
+        })}
+        {files.map((file: any) => (
+          <button
+            key={file._id}
+            onClick={() => setSelectedFile(file.fullPath)}
+            className={`w-full text-left text-sm p-2 rounded hover:bg-accent flex items-center gap-2 ${
+              selectedFile === file.fullPath ? "bg-accent" : ""
+            }`}
+            style={{ paddingLeft: `${level * 12 + 32}px` }}
+          >
+            <File className="h-4 w-4 shrink-0 text-blue-500" />
+            <span>{file.name}</span>
+          </button>
+        ))}
+      </>
+    );
+  };
+
+  const fileTree = buildFileTree(projectFiles || []);
 
   if (authLoading || project === undefined) {
     return (
@@ -574,17 +661,7 @@ export default function ProjectEditor() {
                   <p className="text-sm text-muted-foreground">No files yet</p>
                 )}
                 <div className="space-y-1">
-                  {projectFiles?.map((file) => (
-                    <button
-                      key={file._id}
-                      onClick={() => setSelectedFile(file.filePath)}
-                      className={`w-full text-left text-sm p-2 rounded hover:bg-accent ${
-                        selectedFile === file.filePath ? "bg-accent" : ""
-                      }`}
-                    >
-                      {file.filePath}
-                    </button>
-                  ))}
+                  {renderFileTree(fileTree)}
                 </div>
               </div>
 
