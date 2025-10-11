@@ -63,6 +63,13 @@ export default function ProjectEditor() {
     }
   }, [user, ensureGithubConnected]);
 
+  // Handle authentication redirect
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      navigate("/auth");
+    }
+  }, [authLoading, isAuthenticated, navigate]);
+
   const isGithubConnected = user?.githubConnected;
 
   const handleOpenGithubDialog = async () => {
@@ -256,12 +263,6 @@ export default function ProjectEditor() {
       </div>
     );
   }
-
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      navigate("/auth");
-    }
-  }, [authLoading, isAuthenticated, navigate]);
 
   if (!isAuthenticated) {
     return null;
