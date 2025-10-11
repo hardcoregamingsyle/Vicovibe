@@ -4,7 +4,7 @@ import { v } from "convex/values";
 
 const HF_TOKEN = process.env.HUGGINGFACE_TOKEN || "";
 const HF_API_BASE = "https://api-inference.huggingface.co/models";
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API || "";
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 const OPENROUTER_API_BASE = "https://openrouter.ai/api/v1/chat/completions";
 
 // Model endpoints organized by task type - using verified publicly accessible models
